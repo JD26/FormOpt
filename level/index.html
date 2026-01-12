@@ -485,9 +485,9 @@
 <p>The <code>Level</code> class solves the diffusion-transport equation:</p>
 <div class="arithmatex">\[
 \begin{aligned}
-\partial_t \phi+\theta\cdot\nabla\phi &amp;= h^2\nabla^2\varphi &amp;&amp; x\in \mathcal{D},\, t&gt;0, \\
-                    \partial_{n} \phi &amp;= 0 &amp;&amp; x\in \partial\mathcal{D},\, t&gt;0, \\
-                           \phi(0, x) &amp;= \phi^{i}(x) &amp;&amp; x\in \mathcal{D},
+\partial_t \phi+\theta\cdot\nabla\phi &amp;= h^2\Delta\varphi &amp;&amp; x\in \mathcal{D},\, t&gt;0, \\
+\partial_{n} \phi &amp;= 0 &amp;&amp; x\in \partial\mathcal{D},\, t&gt;0, \\
+\phi(0, x) &amp;= \phi^{i}(x) &amp;&amp; x\in \mathcal{D},
 \end{aligned}
 \]</div>
 <p>where <span class="arithmatex">\(\theta\)</span> is the velocity field, <span class="arithmatex">\(h\)</span> the mesh diameter,
