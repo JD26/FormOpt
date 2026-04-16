@@ -140,7 +140,14 @@ def plot_lv_with_control_pts(
 
 
 def plot_deformations(
-    test_path, name, limits, title=None, figsize=None, boundaries=None, lw=2
+    test_path,
+    name,
+    limits,
+    title=None,
+    figsize=None,
+    boundaries=None,
+    lw=2,
+    filename=None,
 ):
 
     points, cells, phi = None, None, None
@@ -178,6 +185,9 @@ def plot_deformations(
     if boundaries:
         for xy, cl in boundaries:
             ax.plot(xy[:, 0], xy[:, 1], color=cl, linewidth=lw)
+
+    if filename:
+        plt.savefig(filename, dpi=300, pad_inches=0, bbox_inches="tight")
 
 
 def plot_lv(

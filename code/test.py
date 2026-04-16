@@ -42,7 +42,7 @@ test_12 : Heat conduction with two sinks (single) - Data Parallelism
 test_13 : Heat conduction with two sinks (multiple) - Task Parallelism
 test_14 : Logistic equation (r = 10) - Data Parallelism
 test_15 : Logistic equation (r = 40) - Data Parallelism
-test_16 : Logistic equation (r = 90) - Data Parallelism
+test_16 : Logistic equation (r = 100) - Data Parallelism
 test_17 : ------
 test_18 : Cantilever with two loads II - Data Parallelism
 test_19 : Cantilever with two loads II - Task Parallelism
@@ -60,6 +60,7 @@ test_37 : Symmetric Cantilever 2D (SVK)
 test_42 : Symmetric cantilever 3D - Data Parallelism (1 process)
 test_43 : Symmetric cantilever 3D - Data Parallelism (2 process)
 test_44 : Symmetric cantilever 3D - Data Parallelism (4 process)
+test_45 : Symmetric Cantilever 2D with several Ersatz material
 """
 
 
@@ -1794,7 +1795,7 @@ def test_13():
     md.runTP(niter=250, ctrn_tol=1e-3, lgrn_tol=1e-2)
 
 
-def test_14(test_path=Path("../results/t14/"), r=10.0):
+def test_14(test_path=Path("../results/t14/"), r=10.0, tol=1e-3):
     """
     Logistic equation (r = 10) - Data Parallelism
 
@@ -1842,7 +1843,7 @@ def test_14(test_path=Path("../results/t14/"), r=10.0):
         reinit_step=6,
         reinit_pars=(20, 0.1),
         ctrn_tol=1e-3,
-        lgrn_tol=1e-3,
+        lgrn_tol=tol,
         dfactor=1.0,
         smooth=True,
     )
@@ -1854,7 +1855,7 @@ def test_15():
     """
 
     test_path = Path("../results/t15/")
-    test_14(test_path, r=40)
+    test_14(test_path, r=40, tol=1e-3)
 
 
 def test_16():
@@ -1863,7 +1864,7 @@ def test_16():
     """
 
     test_path = Path("../results/t16/")
-    test_14(test_path, r=100)
+    test_14(test_path, r=100, tol=5e-3)
 
 
 def test_17(test_path=Path("../results/t17/"), vol=0.3):
@@ -4440,6 +4441,216 @@ def test_44():
     )
 
 
+def test_45(eps, test_path):
+
+    test_name = "Symmetric Cantilever 2D with several Ersatz material"
+    dim = 2
+    rank_dim = 2
+    mesh_size = 0.015
+
+    vertices = np.array(
+        [(0.0, 0.0), (2.0, 0.0), (2.0, 0.45), (2.0, 0.55), (2.0, 1.0), (0.0, 1.0)]
+    )
+
+    dir_idx, dir_mkr = [6], 1
+    neu_idx, neu_mkr = [3], 2
+    boundary_parts = [(dir_idx, dir_mkr, "dir"), (neu_idx, neu_mkr, "neu")]
+
+    # Create gmsh domain for Data Parallelism
+    output = fop.create_domain_2d_DP(
+        vertices, boundary_parts, mesh_size, path=test_path, plot=False
+    )
+
+    domain, nbr_tri, boundary_tags = output
+
+    if rank == 0:
+        print("\n\t" + test_name + "\n")
+        print(f"> Path = {test_path}")
+        print(f"> Nbr of triangles = {nbr_tri}")
+        print(f"> Ersatz material = {eps}")
+
+    # Space for the PDE solution
+    space = fop.create_space(domain, "CG", rank_dim)
+
+    # Dirichlet condition
+    dirichlet_bcs = fop.homogeneous_dirichlet(
+        domain, space, boundary_tags, [dir_mkr], rank_dim
+    )
+
+    # Boundary to force application
+    ds_g = fop.marked_ds(domain, boundary_tags, [neu_mkr])
+
+    area = 1.0
+    g = (0.0, -2.0)
+    # Create the model
+    md = Compliance(dim, domain, space, g, ds_g[0], dirichlet_bcs, area, test_path)
+
+    md.updateA(eps)
+
+    @fop.region_of(domain)
+    def sub_domain(x):
+        # 0.42 < x[1] < 0.58
+        # 1.95 < x[0]
+        ineqs = [x[1] - 0.42, 0.58 - x[1], x[0] - 1.90]
+        return ineqs
+
+    md.sub = [sub_domain.expression()]
+
+    # Initial guess: centers and radii
+
+    # First set of centers (for example in manuscript):
+    centers = [(2.0, 0.35), (2.0, 0.65), (2.0, 0.0), (2.0, 1.0)]
+    centers += [(0.0, 0.25), (0.0, 0.5), (0.0, 0.75)]
+    centers += [(0.3 + i * 0.7, 0.0) for i in range(3)]
+    centers += [(0.65 + i * 0.7, 0.25) for i in range(2)]
+    centers += [(0.3 + i * 0.7, 0.5) for i in range(3)]
+    centers += [(0.65 + i * 0.7, 0.75) for i in range(2)]
+    centers += [(0.3 + i * 0.7, 1.0) for i in range(3)]
+
+    centers = np.array(centers)
+    radii = np.repeat(0.1, centers.shape[0])
+
+    # Create the initial level set function
+    md.create_initial_level(centers, radii)
+    # Save as initial.xdmf
+    md.save_initial_level(comm)
+
+    md.runDP(
+        ctrn_tol=1e-3,
+        dfactor=1e-1,
+        reinit_step=4,
+        reinit_pars=(20, 0.1),
+        smooth=True,
+    )
+
+
+def test_46():
+    test_45(1e-2, Path("../results/t46/"))
+
+
+def test_47():
+    test_45(1e-3, Path("../results/t47/"))
+
+
+def test_48():
+    test_45(1e-4, Path("../results/t48/"))
+
+
+def test_49():
+    test_45(1e-5, Path("../results/t49/"))
+
+
+def test_50():
+    test_45(1e-6, Path("../results/t50/"))
+
+
+def test_51():
+    test_45(1e-7, Path("../results/t51/"))
+
+
+def test_55(value, test_path):
+
+    test_name = "Symmetric Cantilever 2D with several Ersatz material"
+    dim = 2
+    rank_dim = 2
+    mesh_size = 0.015
+
+    vertices = np.array(
+        [(0.0, 0.0), (2.0, 0.0), (2.0, 0.45), (2.0, 0.55), (2.0, 1.0), (0.0, 1.0)]
+    )
+
+    dir_idx, dir_mkr = [6], 1
+    neu_idx, neu_mkr = [3], 2
+    boundary_parts = [(dir_idx, dir_mkr, "dir"), (neu_idx, neu_mkr, "neu")]
+
+    # Create gmsh domain for Data Parallelism
+    output = fop.create_domain_2d_DP(
+        vertices, boundary_parts, mesh_size, path=test_path, plot=False
+    )
+
+    domain, nbr_tri, boundary_tags = output
+
+    if rank == 0:
+        print("\n\t" + test_name + "\n")
+        print(f"> Path = {test_path}")
+        print(f"> Nbr of triangles = {nbr_tri}")
+        print(f"> Value = {value}")
+
+    # Space for the PDE solution
+    space = fop.create_space(domain, "CG", rank_dim)
+
+    # Dirichlet condition
+    dirichlet_bcs = fop.homogeneous_dirichlet(
+        domain, space, boundary_tags, [dir_mkr], rank_dim
+    )
+
+    # Boundary to force application
+    ds_g = fop.marked_ds(domain, boundary_tags, [neu_mkr])
+
+    area = 1.0
+    g = (0.0, -2.0)
+    # Create the model
+    md = Compliance(dim, domain, space, g, ds_g[0], dirichlet_bcs, area, test_path)
+    md.Coef = value
+
+    @fop.region_of(domain)
+    def sub_domain(x):
+        # 0.42 < x[1] < 0.58
+        # 1.95 < x[0]
+        ineqs = [x[1] - 0.42, 0.58 - x[1], x[0] - 1.90]
+        return ineqs
+
+    md.sub = [sub_domain.expression()]
+
+    # Initial guess: centers and radii
+
+    # First set of centers (for example in manuscript):
+    centers = [(2.0, 0.35), (2.0, 0.65), (2.0, 0.0), (2.0, 1.0)]
+    centers += [(0.0, 0.25), (0.0, 0.5), (0.0, 0.75)]
+    centers += [(0.3 + i * 0.7, 0.0) for i in range(3)]
+    centers += [(0.65 + i * 0.7, 0.25) for i in range(2)]
+    centers += [(0.3 + i * 0.7, 0.5) for i in range(3)]
+    centers += [(0.65 + i * 0.7, 0.75) for i in range(2)]
+    centers += [(0.3 + i * 0.7, 1.0) for i in range(3)]
+
+    centers = np.array(centers)
+    radii = np.repeat(0.1, centers.shape[0])
+
+    # Create the initial level set function
+    md.create_initial_level(centers, radii)
+    # Save as initial.xdmf
+    md.save_initial_level(comm)
+
+    md.runDP(
+        niter=250,
+        ctrn_tol=1e-3,
+        dfactor=1e-1,
+        reinit_step=4,
+        reinit_pars=(20, 0.1),
+        smooth=True,
+    )
+
+
+def test_56():
+    test_55(0.01, Path("../results/t56/"))
+
+
+def test_57():
+    test_55(0.1, Path("../results/t57/"))
+
+
+def test_58():
+    test_55(1.0, Path("../results/t58/"))
+
+
+def test_59():
+    test_55(10.0, Path("../results/t59/"))
+
+
+def test_60():
+    test_55(100.0, Path("../results/t60/"))
+
+
 test_functions = {
     "01": test_01,
     "02": test_02,
@@ -4475,6 +4686,18 @@ test_functions = {
     "42": test_42,
     "43": test_43,
     "44": test_44,
+    "46": test_46,
+    "47": test_47,
+    "48": test_48,
+    "49": test_49,
+    "50": test_50,
+    "51": test_51,
+    "55": test_55,
+    "56": test_56,
+    "57": test_57,
+    "58": test_58,
+    "59": test_59,
+    "60": test_60,
 }
 
 

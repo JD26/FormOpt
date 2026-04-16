@@ -117,6 +117,7 @@ dat_name = "data"
 res_name = "results"
 ini_name = "initial"
 ext_name = "extensions"
+inf_name = "info_solver"
 
 ScalarFunc = Callable[[npt.NDArray[np.float64]], float]
 VectorFunc = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
@@ -1819,7 +1820,7 @@ def create_solver(a, L, bcs, uh):
         "ksp_rtol": 1e-6,  # Relative tolerance for convergence
         "ksp_atol": 1e-10,  # Absolute tolerance for convergence
         "ksp_max_it": 1000,  # Maximum number of iterations
-        # "ksp_monitor": None
+        # "ksp_monitor": None,
     }
 
     problem = LinearProblem(a, L, u=uh, bcs=bcs, petsc_options=petsc_options)
@@ -1847,6 +1848,37 @@ def basic_solver(a, L, bcs, uh):
 
     problem = LinearProblem(a, L, u=uh, bcs=bcs, petsc_options=petsc_options)
     problem.solve()
+
+
+class SaveInfoSolver:
+
+    def __init__(self, ksp):
+        self.ksp = ksp
+        self.residuals = []
+        self.iterations = []
+        self.rates = []
+        self.ksp.setMonitor(self.monitor)
+
+    def monitor(self, ksp, its, rnorm):
+        self.residuals.append(rnorm)
+
+    def add(self):
+        its = self.ksp.getIterationNumber()
+        residuals = np.array(self.residuals)
+        if len(residuals) > 3:
+            rate = np.mean(np.diff(np.log10(residuals))[2:])
+        else:
+            rate = np.nan
+        self.residuals.clear()
+        self.iterations.append(its)
+        self.rates.append(rate)
+
+    def save(self, path):
+        data_to_save = {
+            "iterations": np.array(self.iterations, dtype=np.int32),
+            "rates": np.array(self.rates),
+        }
+        np.savez(path / f"{inf_name}.npz", **data_to_save)
 
 
 class Smooth:
@@ -1993,6 +2025,7 @@ class Velocity_Mixed:
         biform: Callable[[Argument, Argument], Tuple[Expr, bool]],
         S0: Expr,
         S1: Expr,
+        dx: Measure,
     ) -> None:
         """
         Sets up the linear system for the velocity.
@@ -2017,29 +2050,24 @@ class Velocity_Mixed:
 
         th = TrialFunction(space)
         xi = TestFunction(space)
-        dx = Measure("dx", domain=domain)
 
-        b, dirbc = biform(th, xi)
+        self.biform, dirbc = biform(th, xi)
 
-        self.biform = form(b)
         self.bc = None
 
         if dirbc == True:
             self.bc = homogeneus_boundary(domain, space, dim, dim)
         else:
             self.bc = []
-        self.S0, self.S1, self.xi = S0, S1, xi
-        # self.solver = build_solver(domain, self.biform, self.bc)
 
-    def run(self, theta: Function, dx: Measure) -> None:
+        self.liform = -(dot(S0, xi) + inner(S1, grad(xi))) * dx((1, 2))
+
+    def run(self, theta: Function) -> None:
         """
         Solves the velocity equation.
         Only the linear part must be updated.
         """
-        liform = form(
-            -(dot(self.S0, self.xi) + inner(self.S1, grad(self.xi))) * dx((1, 2))
-        )
-        basic_solver(self.biform, liform, self.bc, theta)
+        basic_solver(form(self.biform), form(self.liform), self.bc, theta)
 
 
 class Level:
@@ -2820,6 +2848,7 @@ class NonlinearSolverbySteeping:
 
         for fc in self.vals:
             self.factor.value = PETSc.ScalarType(fc)
+            # print(self.factor.value)
             try:
                 niter, converged = self.solver.solve(self.u)
             except RuntimeError as e:
@@ -3240,6 +3269,19 @@ def phifem_run(
     else:
         adj_fcs = []
 
+    # to be evaluated: quantities
+    nbr_to_ev_qs = len(model._to_eval["quantity"])
+    if nbr_to_ev_qs > 0:
+        to_ev_qs = []
+        qs_names = []
+
+        for name, fc in model._to_eval["quantity"].items():
+            to_ev_qs.append(form(fc(model, phi, ste_fcs, adj_fcs)))
+            qs_names.append(name)
+
+        if rank == 0:
+            tosave.add_qtty_names(qs_names)
+
     # Derivative components
     S0_cts, S1_cts = model.derivative(phi, ste_fcs, adj_fcs)
     S0 = S0_cts[0]
@@ -3258,9 +3300,6 @@ def phifem_run(
             S1 += L[i] * S1_cts[1][i]
     # Derivative norm
     nDJ = form((model.bilinear_form(tht, tht))[0])
-
-    # To calculate the velocity field
-    cls_vlty = Velocity(dim, domain, sp_vlty, model.bilinear_form, S0, S1)
 
     # To calculate the level set function
     cls_lset = Level(domain, sp_lset, phi, tht, diam2, smooth)
@@ -3286,6 +3325,8 @@ def phifem_run(
     model.dS = Measure("dS", domain=domain, subdomain_data=facets_tags)
 
     #######################################################################
+    # To calculate the velocity field
+    cls_vlty = Velocity(dim, domain, sp_vlty, model.bilinear_form, S0, S1)
 
     cls_smt = Smooth(domain, sp_lset, phi, diam2)
     cls_smt.run(phi)
@@ -3314,6 +3355,9 @@ def phifem_run(
             phifem_solve_mixed(nbr_adj, adj_eqs, adj_fcs, model.map)
         comm.barrier()
 
+    if nbr_to_ev_qs > 0:
+        qs_eval = global_scalar_list(to_ev_qs, comm)
+
     cls_vlty.run(tht)  # model.dx
     nder = global_scalar(nDJ, comm, np.sqrt)
 
@@ -3332,7 +3376,8 @@ def phifem_run(
         else:
             print1(0, cost, nder, 0)
         tosave.add(cost, nder)
-
+        if nbr_to_ev_qs > 0:
+            tosave.add_quantities(qs_eval)
     # ====================================================
     spaceP1 = None
     degree_space = model.space.ufl_element().degree
@@ -3411,6 +3456,9 @@ def phifem_run(
                     phifem_solve_mixed(nbr_adj, adj_eqs, adj_fcs, model.map)
                 comm.barrier()
 
+            if nbr_to_ev_qs > 0:
+                qs_eval = global_scalar_list(to_ev_qs, comm)
+
             cls_vlty.run(tht)  # model.dx
 
             nder = global_scalar(nDJ, comm, np.sqrt)
@@ -3444,6 +3492,8 @@ def phifem_run(
                 else:
                     print1(iter, cost, nder, lset_steps)
                 tosave.add(cost, nder)
+                if nbr_to_ev_qs > 0:
+                    tosave.add_quantities(qs_eval)
 
                 if iter > start_to_check:
                     if nbr_ctr > 0:
@@ -3572,6 +3622,7 @@ def runDP(
             weak_form, bcs = ste_problem
             bi, li = system(weak_form)
             ste_pbs.append(create_solver(form(bi), form(li), bcs, ste_fcs[i]))
+            # save_info_solver = SaveInfoSolver(ste_pbs[0].solver)
         elif len(ste_problem) == 5:
             # nonlinear: newton with initial guess
             weak_form, bcs, jacobian, seudo_state, ini_func = ste_problem
@@ -3583,7 +3634,6 @@ def runDP(
                 )
             )
         elif model.ini_linear:
-            print("Here!")
             weak_form, bcs, jacobian, seudo_state, ini_linear, factor_pars = ste_problem
             factor, nbr_newton_steps = factor_pars
             true_factor = const(domain, 0.0)
@@ -3708,6 +3758,7 @@ def runDP(
 
     [p.solve() for p in ste_pbs]
     comm.Barrier()
+    # save_info_solver.add()
 
     cost = global_scalar(J, comm)
 
@@ -3795,6 +3846,7 @@ def runDP(
 
             [p.solve() for p in ste_pbs]
             comm.barrier()
+            # save_info_solver.add()
 
             cost = global_scalar(J, comm)
 
@@ -3895,6 +3947,7 @@ def runDP(
             tosave.add_ppl(cls_meth)
         tosave.add_times(max_assembly, max_solve)
         tosave.save(model.path)
+        # save_info_solver.save(model.path)
         print(f"> Assembly time = {max_assembly} s")
         print(f"> Resolution time = {max_solve} s")
 

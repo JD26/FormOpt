@@ -1,0 +1,65 @@
+Info    : Reading '../results/t51/domain.msh'...
+Info    : 13 entities
+Info    : 10675 nodes
+Info    : 21020 elements
+Info    : Done reading '../results/t51/domain.msh'
+
+	Symmetric Cantilever 2D with several Ersatz material
+
+> Path = ../results/t51
+> Nbr of triangles = 20946
+> Ersatz material = 1e-07
+> Iterations:
+i =   0 | cost = 2.7146 | cstr = 1.5925 | nder = 5.3776 | steps =  0 | lagr = 2.7146 | lm = 0.0000 | mu = 0.0000 | 
+i =   1 | cost = 2.3464 | cstr = 1.6170 | nder = 3.3017 | steps = 14 | lagr = 2.7267 | lm = 1.2328 | mu = 0.0000 | 
+i =   2 | cost = 2.1090 | cstr = 1.6313 | nder = 2.2216 | steps = 14 | lagr = 2.6614 | lm = 1.5057 | mu = 0.2444 | 
+i =   3 | cost = 1.9542 | cstr = 1.6405 | nder = 1.5692 | steps = 14 | lagr = 2.6761 | lm = 1.7670 | mu = 0.4873 | 
+i =   4 | cost = 1.8548 | cstr = 1.6421 | nder = 1.1951 | steps = 15 | lagr = 2.7350 | lm = 2.0121 | mu = 0.7292 | 
+i =   5 | cost = 1.7923 | cstr = 1.6326 | nder = 1.0331 | steps = 16 | lagr = 2.8062 | lm = 2.2346 | mu = 0.9706 | 
+i =   6 | cost = 1.7739 | cstr = 1.6088 | nder = 1.0138 | steps = 15 | lagr = 2.8825 | lm = 2.4291 | mu = 1.2127 | 
+i =   7 | cost = 1.7719 | cstr = 1.5791 | nder = 1.0669 | steps = 16 | lagr = 2.9503 | lm = 2.6135 | mu = 1.4565 | 
+i =   8 | cost = 1.7803 | cstr = 1.5426 | nder = 1.1390 | steps = 16 | lagr = 2.9981 | lm = 2.7863 | mu = 1.7022 | 
+i =   9 | cost = 1.8056 | cstr = 1.5025 | nder = 1.2101 | steps = 15 | lagr = 3.0373 | lm = 2.9533 | mu = 1.9494 | 
+i =  10 | cost = 1.8465 | cstr = 1.4529 | nder = 1.2909 | steps = 16 | lagr = 3.0464 | lm = 3.1020 | mu = 2.1971 | 
+i =  11 | cost = 1.8909 | cstr = 1.4058 | nder = 1.3675 | steps = 16 | lagr = 3.0470 | lm = 3.2542 | mu = 2.4434 | 
+i =  12 | cost = 1.9408 | cstr = 1.3564 | nder = 1.4351 | steps = 16 | lagr = 3.0249 | lm = 3.3975 | mu = 2.6853 | 
+i =  13 | cost = 1.9914 | cstr = 1.3095 | nder = 1.4938 | steps = 15 | lagr = 2.9906 | lm = 3.5372 | mu = 2.9188 | 
+i =  14 | cost = 2.0429 | cstr = 1.2612 | nder = 1.5369 | steps = 16 | lagr = 2.9312 | lm = 3.6615 | mu = 3.1395 | 
+i =  15 | cost = 2.1087 | cstr = 1.2092 | nder = 1.5341 | steps = 15 | lagr = 2.8517 | lm = 3.7599 | mu = 3.3418 | 
+i =  16 | cost = 2.1687 | cstr = 1.1612 | nder = 1.5342 | steps = 15 | lagr = 2.7615 | lm = 3.8391 | mu = 3.5171 | 
+i =  17 | cost = 2.2297 | cstr = 1.1126 | nder = 1.4925 | steps = 16 | lagr = 2.6546 | lm = 3.8857 | mu = 3.6606 | 
+i =  18 | cost = 2.2936 | cstr = 1.0662 | nder = 1.4284 | steps = 16 | lagr = 2.5474 | lm = 3.8983 | mu = 3.7659 | 
+i =  19 | cost = 2.3571 | cstr = 1.0229 | nder = 1.3494 | steps = 15 | lagr = 2.4454 | lm = 3.8756 | mu = 3.8298 | 
+i =  20 | cost = 2.4193 | cstr = 0.9821 | nder = 1.2473 | steps = 15 | lagr = 2.3507 | lm = 3.8165 | mu = 3.8522 | 
+i =  21 | cost = 2.4604 | cstr = 0.9492 | nder = 1.1374 | steps = 16 | lagr = 2.2682 | lm = 3.7332 | mu = 3.8347 | 
+i =  22 | cost = 2.5036 | cstr = 0.9184 | nder = 1.0283 | steps = 16 | lagr = 2.2013 | lm = 3.6225 | mu = 3.7855 | 
+i =  23 | cost = 2.5401 | cstr = 0.8928 | nder = 0.9334 | steps = 16 | lagr = 2.1542 | lm = 3.4937 | mu = 3.7079 | 
+i =  24 | cost = 2.5661 | cstr = 0.8747 | nder = 0.9416 | steps = 16 | lagr = 2.1298 | lm = 3.3575 | mu = 3.6078 | 
+i =  25 | cost = 2.5814 | cstr = 0.8654 | nder = 1.1658 | steps = 16 | lagr = 2.1293 | lm = 3.2239 | mu = 3.4929 | 
+i =  26 | cost = 2.5938 | cstr = 0.8622 | nder = 1.6667 | steps = 15 | lagr = 2.1482 | lm = 3.0952 | mu = 3.3706 | 
+i =  27 | cost = 2.5705 | cstr = 0.8642 | nder = 1.4543 | steps = 15 | lagr = 2.1481 | lm = 2.9745 | mu = 3.2459 | 
+i =  28 | cost = 2.5541 | cstr = 0.8663 | nder = 1.3850 | steps = 16 | lagr = 2.1544 | lm = 2.8557 | mu = 3.1229 | 
+i =  29 | cost = 2.5275 | cstr = 0.8731 | nder = 1.3223 | steps = 16 | lagr = 2.1627 | lm = 2.7481 | mu = 3.0016 | 
+i =  30 | cost = 2.5052 | cstr = 0.8772 | nder = 1.2087 | steps = 15 | lagr = 2.1659 | lm = 2.6406 | mu = 2.8859 | 
+i =  31 | cost = 2.4773 | cstr = 0.8865 | nder = 1.1915 | steps = 16 | lagr = 2.1753 | lm = 2.5468 | mu = 2.7736 | 
+i =  32 | cost = 2.4461 | cstr = 0.8958 | nder = 0.9676 | steps = 16 | lagr = 2.1789 | lm = 2.4610 | mu = 2.6691 | 
+i =  33 | cost = 2.4278 | cstr = 0.8997 | nder = 0.9349 | steps = 15 | lagr = 2.1799 | lm = 2.3721 | mu = 2.5725 | 
+i =  34 | cost = 2.4167 | cstr = 0.9029 | nder = 0.9574 | steps = 16 | lagr = 2.1853 | lm = 2.2853 | mu = 2.4793 | 
+i =  35 | cost = 2.3950 | cstr = 0.9114 | nder = 0.9570 | steps = 16 | lagr = 2.1912 | lm = 2.2119 | mu = 2.3889 | 
+i =  36 | cost = 2.3698 | cstr = 0.9217 | nder = 0.9155 | steps = 16 | lagr = 2.1953 | lm = 2.1496 | mu = 2.3060 | 
+i =  37 | cost = 2.3420 | cstr = 0.9310 | nder = 0.8090 | steps = 16 | lagr = 2.1927 | lm = 2.0945 | mu = 2.2324 | 
+i =  38 | cost = 2.3204 | cstr = 0.9377 | nder = 0.6835 | steps = 15 | lagr = 2.1892 | lm = 2.0427 | mu = 2.1672 | 
+i =  39 | cost = 2.2997 | cstr = 0.9450 | nder = 0.5602 | steps = 16 | lagr = 2.1868 | lm = 1.9983 | mu = 2.1082 | 
+i =  40 | cost = 2.2751 | cstr = 0.9556 | nder = 0.4599 | steps = 15 | lagr = 2.1857 | lm = 1.9672 | mu = 2.0560 | 
+i =  41 | cost = 2.2628 | cstr = 0.9600 | nder = 0.3998 | steps = 16 | lagr = 2.1839 | lm = 1.9338 | mu = 2.0137 | 
+i =  42 | cost = 2.2513 | cstr = 0.9651 | nder = 0.3922 | steps = 15 | lagr = 2.1836 | lm = 1.9058 | mu = 1.9756 | 
+i =  43 | cost = 2.2413 | cstr = 0.9700 | nder = 0.3863 | steps = 16 | lagr = 2.1840 | lm = 1.8824 | mu = 1.9423 | 
+i =  44 | cost = 2.2267 | cstr = 0.9778 | nder = 0.3826 | steps = 16 | lagr = 2.1847 | lm = 1.8693 | mu = 1.9137 | 
+i =  45 | cost = 2.2172 | cstr = 0.9821 | nder = 0.3832 | steps = 16 | lagr = 2.1836 | lm = 1.8567 | mu = 1.8925 | 
+i =  46 | cost = 2.2094 | cstr = 0.9855 | nder = 0.3891 | steps = 16 | lagr = 2.1823 | lm = 1.8464 | mu = 1.8754 | 
+i =  47 | cost = 2.2020 | cstr = 0.9894 | nder = 0.4072 | steps = 16 | lagr = 2.1824 | lm = 1.8404 | mu = 1.8615 | 
+i =  48 | cost = 2.1923 | cstr = 0.9952 | nder = 0.3903 | steps = 16 | lagr = 2.1835 | lm = 1.8419 | mu = 1.8515 | 
+i =  49 | cost = 2.1807 | cstr = 1.0006 | nder = 0.3614 | steps = 16 | lagr = 2.1817 | lm = 1.8480 | mu = 1.8469 | 
+> Stopping condition reached!
+> Assembly time = 8.960354714999994 s
+> Resolution time = 6.222062629999982 s

@@ -1,13 +1,14 @@
-Info    : Reading '../results/t01/domain.msh'...
+Info    : Reading '../results/t57/domain.msh'...
 Info    : 13 entities
 Info    : 10675 nodes
 Info    : 21020 elements
-Info    : Done reading '../results/t01/domain.msh'
+Info    : Done reading '../results/t57/domain.msh'
 
-	Symmetric Cantilever 2D - Data Parallelism
+	Symmetric Cantilever 2D with several Ersatz material
 
-> Path = ../results/t01
+> Path = ../results/t57
 > Nbr of triangles = 20946
+> Value = 0.1
 > Iterations:
 i =   0 | cost = 2.7139 | cstr = 1.5925 | nder = 5.3727 | steps =  0 | lagr = 2.7139 | lm = 0.0000 | mu = 0.0000 | 
 i =   1 | cost = 2.3460 | cstr = 1.6170 | nder = 3.2990 | steps = 14 | lagr = 2.7263 | lm = 1.2328 | mu = 0.0000 | 
@@ -61,5 +62,5 @@ i =  48 | cost = 2.1906 | cstr = 0.9954 | nder = 0.3692 | steps = 16 | lagr = 2.
 i =  49 | cost = 2.1841 | cstr = 0.9986 | nder = 0.3614 | steps = 16 | lagr = 2.1815 | lm = 1.8436 | mu = 1.8464 | 
 i =  50 | cost = 2.1835 | cstr = 0.9993 | nder = 0.3696 | steps = 16 | lagr = 2.1822 | lm = 1.8436 | mu = 1.8451 | 
 > Stopping condition reached!
-> Assembly time = 8.107531030000018 s
-> Resolution time = 6.0536635710000155 s
+> Assembly time = 8.0658131429999 s
+> Resolution time = 6.078374405999966 s
