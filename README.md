@@ -19,7 +19,7 @@ If you have any questions, suggestions, or need assistance with this project, fe
 ## Repository structure
 
 ```
-├── paper/                      # Submitted manuscript
+├── paper/				# Submitted manuscript
 ├── code/       		# Python scripts and numerical tests
 │ 	├── formopt.py		# Classes and functions
 │ 	├── models.py		# Model problems
