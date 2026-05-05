@@ -1,13 +1,13 @@
 references/
-tex/distributed.pdf
 tex/formopt.pdf
 code/deprecated/
 code/__pycache__/
 site/
-samo/Manuscript.pdf
-fead/Manuscript.pdf
-fead/doc/
-fead2/
+code/mesh_scripts.py
+code/Elasticity*
+code/phiFEM*
+results/Elasticity/
+results/phiFEM/
 *.lyx~
 *.npz
 *.npy
@@ -23,10 +23,5 @@ fead2/
 *.fls
 *.log
 *.gz
-/home/antoine/Mathematics/Research_ongoing/Josue/fenics-parallel/distributed/fead_revision/
-code/mesh_scripts.py
-code/Elasticity*
-code/phiFEM*
-results/Elasticity/
-results/phiFEM/
+
 

@@ -98,12 +98,10 @@ from dolfinx.nls.petsc import NewtonSolver
 from abc import ABC, abstractmethod
 
 import numpy.typing as npt
-from typing import List, Tuple, Callable, Sequence, final
+from typing import List, Tuple, Callable, Sequence, final, Optional
 from ufl.core.expr import Expr
 
 from plots import plot_domain
-
-from mesh_scripts import compute_tags_measures  # phiFem
 
 from basix.ufl import element, mixed_element
 
@@ -122,6 +120,16 @@ inf_name = "info_solver"
 ScalarFunc = Callable[[npt.NDArray[np.float64]], float]
 VectorFunc = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
 GenericFunc = ScalarFunc | ScalarFunc
+
+
+class Factor:
+
+    def __init__(self, domain):
+        self.factor = const(domain, 0)
+
+    def update(self, expr: Expr, func: Callable[[float], float]):
+        value = global_scalar(form(expr), comm)
+        self.factor.value = func(value)
 
 
 class Model(ABC):
@@ -404,6 +412,24 @@ class Model(ABC):
         """
         return self.ini_lvl.func
 
+    def cost_post_evaluation(self, cost_value: float) -> float:
+        """
+        For instance:
+        ```
+        def cost_post_evaluation(self, x):
+            return x**-1
+        ```
+        """
+        return cost_value
+
+    def derivative_cost_factor(
+        self, phi: Function, U: List[Function]
+    ) -> None | Tuple[Expr, Callable[[float], float]]:
+        """
+        -----
+        """
+        return None
+
     @final
     def runDP(
         self,
@@ -651,93 +677,6 @@ class Model(ABC):
 
         self.phi = runMP(
             sub_comm,
-            self,
-            niter,
-            reinit_step,
-            reinit_pars,
-            dfactor,
-            lv_time,
-            lv_iter,
-            smooth,
-            start_to_check,
-            ctrn_tol,
-            lgrn_tol,
-            cost_tol,
-            prev,
-            random_pars,
-        )
-
-    @final
-    def phifem_run(
-        self,
-        niter: int = 100,
-        dfactor: float = 1e-2,
-        lv_time: Tuple[float, float] = (1e-3, 1e-1),
-        lv_iter: Tuple[int, int] = (8, 16),
-        smooth: bool = False,
-        reinit_step: int | bool = False,
-        reinit_pars: Tuple[int, float] = (8, 1e-1),
-        start_to_check: int = 30,
-        ctrn_tol: float = 1e-2,
-        lgrn_tol: float = 1e-2,
-        cost_tol: float = 1e-2,
-        prev: int = 10,
-        random_pars: Tuple[int, float] = (1, 0.05),
-    ) -> None:
-        """
-        This method implements Data Parallelism.
-
-        Parameters
-        ----------
-        niter : int, default=100
-            The number of iterations.
-        dfactor : float, default=1e-2
-            A positive scaling factor applied to the inverse of
-            the derivative norm to estimate the final integration
-            time of the level set equation.
-            Values <= 1 are recommended.
-        lv_time : Tuple[float, float], default=(1e-3, 1e-1)
-            A tuple with the minimum and maximum time allowed
-            for the integration of the level set equation.
-        lv_iter : Tuple[int, int], default=(8, 16)
-            A tuple with the minimum and maximum number of
-            iterations allowed for the integration of the level
-            set equation.
-        smooth : bool, default=False
-            If True, a diffusion term is added to the level set
-            equation; if False, the equation is solved without
-            diffusion.
-        reinit_step : int or bool, default=False
-            A positive integer to apply the reinitialization
-            method when the condition
-                iter>start_to_check and reinit_step%iter == 0
-            holds. If False, no reinitialization is applied.
-        reinit_pars : Tuple[int, float], default=(8, 1e-1)
-            A tuple with the number of iterations and the final
-            time for the integration of the reinitialization
-            equation. The argument reinit_step must be a
-            positive integer.
-        start_to_check : int, default=30,
-            A positive integer to verify the stopping condition
-            when current iteration > start_to_check.
-        ctrn_tol : float, default=1e-2,
-            Tolerance for the error constraint.
-        lgrn_tol : float, default=1e-2,
-            Tolerance for the relative difference
-            of the <prev>-th previous Lagrangian values.
-        cost_tol : float, default=1e-2,
-            Tolerance for the relative difference
-            of the <prev>-th previous cost values.
-        prev : int, default=10,
-            Number of previous values to verify the tolerance
-            of the Lagrangian and cost functionals.
-        random_pars : Tuple[int, float], default=(1, 0.05)
-            Seed and noise level in the line search method.
-        """
-
-        self.__verification(["dim", "domain", "space", "path"])
-
-        self.phi = phifem_run(
             self,
             niter,
             reinit_step,
@@ -1529,6 +1468,8 @@ def read_gmsh(
     facet_tags : MeshTags_int32
         Integer tags associated with mesh facets (co-dimension 1 entities).
     """
+    # Possibly for phifem
+    # partitioner=create_cell_partitioner(GhostMode.shared_facet)
     return gmshio.read_from_msh(filename, comm=comm, gdim=dim)
 
 
@@ -1691,7 +1632,7 @@ def eval(formula):
     return assemble_scalar(form(formula))
 
 
-def const(domain, value):
+def const(domain: Mesh, value: float):
     return Constant(domain, PETSc.ScalarType(value))
 
 
@@ -1846,6 +1787,14 @@ def basic_solver(a, L, bcs, uh):
         # "ksp_monitor": None
     }
 
+    # LU
+    # petsc_options = {
+    #     "ksp_type": "preonly",  # no iterations, solve in one step
+    #     "pc_type": "lu",  # direct LU factorization
+    #     "pc_factor_mat_solver_type": "mumps",  # robust sparse direct solver
+    #     # alternatives: "superlu_dist", "petsc"
+    # }
+
     problem = LinearProblem(a, L, u=uh, bcs=bcs, petsc_options=petsc_options)
     problem.solve()
 
@@ -1967,7 +1916,7 @@ class Velocity:
         if dirbc == True:
             # Homogeneous Dirichlet boundary condition on the whole boundary
             # Recall that domain dimension = velocity rank
-            self.bc = homogeneus_boundary(domain, space, dim, dim)
+            self.bc = homogeneous_boundary(domain, space, dim, dim)
         elif isinstance(dirbc, tuple):
             # Homogeneous Dirichlet boundary condition on a subset of the boundary.
             # dirbc is a tuple with two components,
@@ -2056,7 +2005,7 @@ class Velocity_Mixed:
         self.bc = None
 
         if dirbc == True:
-            self.bc = homogeneus_boundary(domain, space, dim, dim)
+            self.bc = homogeneous_boundary(domain, space, dim, dim)
         else:
             self.bc = []
 
@@ -2312,7 +2261,7 @@ class Reinit:
             self.phi_prev.x.array[:] = self.w.x.array[:]
 
 
-def homogeneus_boundary(domain, space, dim, rank_dimension):
+def homogeneous_boundary(domain, space, dim, rank_dimension):
     """
     Create homgeneous boundary conditions over the whole
     boundary. Used to calculate the velocity field.
@@ -3067,93 +3016,6 @@ def read_level_set_function(path: Path, domain: Mesh, niter: int) -> Function:
     return None
 
 
-def phifem_solver_mixed(a, L, bcs, uh, map0):
-    problem = LinearProblem(
-        a,
-        L,
-        bcs=bcs,
-        petsc_options={
-            "ksp_type": "preonly",
-            "pc_type": "lu",
-            "pc_factor_mat_solver_type": "mumps",
-            "ksp_error_if_not_converged": True,
-            "mat_mumps_icntl_24": 1,
-            "mat_mumps_icntl_25": 0,
-        },
-    )
-    w = problem.solve()
-    uh.x.array[:] = w.x.array[map0]
-
-
-def phifem_solver(
-    a: Expr,
-    L: Expr,
-    bcs: Sequence[DirichletBC],
-    uh: Function,
-    phi: Function,
-    rank_dim: int,
-    comm: MPI.Comm,
-) -> None:
-    """
-    This function was created to use phiFem method in formopt.
-    It solves the linear system using LU and compute the phiFem
-    solution.
-    """
-    A = assemble_matrix(form(a), bcs=bcs)
-    A.assemble()
-    b = assemble_vector(form(L))
-
-    ksp = PETSc.KSP().create(comm)
-    ksp.setOperators(A)
-    ksp.setType("preonly")
-    pc = ksp.getPC()
-    pc.setType("lu")
-    pc.setFactorSolverType("mumps")
-    pc.setFactorSetUpSolverType()
-    F = pc.getFactorMatrix()
-    F.setMumpsIcntl(icntl=24, ival=1)
-    F.setMumpsIcntl(icntl=25, ival=0)
-    ksp.solve(b, uh.x.petsc_vec)
-    ksp.destroy()
-
-    uh.x.scatter_forward()
-    for i in range(rank_dim):
-        uh.x.array[i::rank_dim] *= phi.x.array[:]
-    uh.x.scatter_forward()
-
-
-def phifem_solve(
-    nbr_eq: int,
-    equations: List[Tuple[Expr, Sequence[DirichletBC]]],
-    solutions: List[Function],
-    phi: Function,
-    rank_dim: int,
-    comm: MPI.Comm,
-):
-    """
-    This function was created to use phiFem method in formopt.
-    """
-    for i in range(nbr_eq):
-        weak_form, bcs = equations[i]
-        bi, li = system(weak_form)
-        phifem_solver(bi, li, bcs, solutions[i], phi, rank_dim, comm)
-
-
-def phifem_solve_mixed(
-    nbr_eq: int,
-    equations: List[Tuple[Expr, Sequence[DirichletBC]]],
-    solutions: List[Function],
-    map,
-):
-    """
-    This function was created to use phiFem method in formopt.
-    """
-    for i in range(nbr_eq):
-        weak_form, bcs = equations[i]
-        bi, li = system(weak_form)
-        phifem_solver_mixed(bi, li, bcs, solutions[i], map)
-
-
 def get_initial_level(
     domain: Mesh,
     centers: npt.NDArray[np.float64],
@@ -3169,364 +3031,6 @@ def get_initial_level(
     phi0 = Function(sp_lset)
     phi0.interpolate(ini_lvl.func)
     return phi0
-
-
-def phifem_run(
-    model: Model,
-    niter: int,
-    reinit_step: int | bool,
-    reinit_pars: Tuple[int, float],
-    dfactor: float,
-    lv_time: Tuple[float, float],
-    lv_iter: Tuple[int, int],
-    smooth: bool,
-    start_to_check: int,
-    ctrn_tol: float,
-    lgrn_tol: float,
-    cost_tol: float,
-    prev: int,
-    random_pars: Tuple[int, float],
-) -> Function:
-    """
-    This function was created to use phiFem method in formopt.
-    It is based on the `runDP` function.
-    The parallelism scheme is implemented in the hope
-    that phifem functions will run in parallel someday.
-    """
-
-    start_assembly = MPI.Wtime()
-
-    rein_steps, rein_end = reinit_pars
-    min_time, max_time = lv_time
-    min_iter, max_iter = lv_iter
-    seed, noise = random_pars
-
-    # Constants ===========================
-    filename = model.path / f"{res_name}.xdmf"
-    stop_flag = False
-
-    dim = model.dim
-    domain = model.domain
-    rank_dim = model.rank_dim
-
-    vol = volume(domain, comm)
-    nfems = nbr_fems(domain, dim, comm)
-
-    if rank == 0:
-        diam2 = get_diam2(dim, vol, nfems)
-        np.random.seed(seed)
-        lsearch = AdapTime((min_time, max_time), (min_iter, max_iter), dfactor, noise)
-        tosave = Save()
-    else:
-        diam2 = None
-
-    diam2 = comm.bcast(diam2, root=0)
-
-    # List of variables
-    # -----------------
-    # sp_lset : space of level set functions
-    # sp_vlty : space of velocity fields
-    # phi : level set function
-    # tht : velocity field
-    # ste_eqs : list of state equations
-    # adj_eqs : list of adjoint equations
-    # ste_fcs : list of state functions
-    # adj_fcs : list of adjoint functions
-    # ste_pbs : list of state problems
-    # adj_pbs : list of adjoint problems
-    # eq_ctrs : list of equality constraints
-    # nbr_ste : number of states
-    # nbr_adj : number of adjoints
-    # nbr_ctr : number of constraints
-    # J : cost functional
-    # C : list of constraints
-    # L : list of lagrange multipliers
-    # S0, S1 : derivative components
-
-    # Level set function
-    sp_lset = create_space(domain, "CG", 1)
-    phi = Function(sp_lset)
-    phi.name = "phi"
-    # Velocity field
-    sp_vlty = create_space(domain, "CG", dim)
-    tht = Function(sp_vlty)
-    tht.name = "tht"
-
-    # State equations/functions
-    ste_eqs = model.pde(phi)
-    nbr_ste = len(ste_eqs)
-    ste_fcs = [Function(model.space) for _ in range(nbr_ste)]
-    for i in range(nbr_ste):
-        ste_fcs[i].name = "u" + str(i)
-
-    # Adjoint equations/functions
-    adj_eqs = model.adjoint(phi, ste_fcs)
-    nbr_adj = len(adj_eqs)
-    if nbr_adj > 0:
-        adj_fcs = [Function(model.space) for _ in range(nbr_adj)]
-        for i in range(nbr_adj):
-            adj_fcs[i].name = "p" + str(i)
-    else:
-        adj_fcs = []
-
-    # to be evaluated: quantities
-    nbr_to_ev_qs = len(model._to_eval["quantity"])
-    if nbr_to_ev_qs > 0:
-        to_ev_qs = []
-        qs_names = []
-
-        for name, fc in model._to_eval["quantity"].items():
-            to_ev_qs.append(form(fc(model, phi, ste_fcs, adj_fcs)))
-            qs_names.append(name)
-
-        if rank == 0:
-            tosave.add_qtty_names(qs_names)
-
-    # Derivative components
-    S0_cts, S1_cts = model.derivative(phi, ste_fcs, adj_fcs)
-    S0 = S0_cts[0]
-    S1 = S1_cts[0]
-    # Equality constraints
-    eq_ctrs = model.constraint(phi, ste_fcs)
-    nbr_ctr = len(eq_ctrs)
-    if nbr_ctr > 0:
-        # Compilation of the constraints
-        C = [form(c) for c in eq_ctrs]
-        # Lagrange multipliers
-        L = [const(domain, 0) for _ in range(nbr_ctr)]
-        # Creation of the derivatives components
-        for i in range(nbr_ctr):
-            S0 += L[i] * S0_cts[1][i]
-            S1 += L[i] * S1_cts[1][i]
-    # Derivative norm
-    nDJ = form((model.bilinear_form(tht, tht))[0])
-
-    # To calculate the level set function
-    cls_lset = Level(domain, sp_lset, phi, tht, diam2, smooth)
-
-    # Reinicialization
-    if reinit_step:
-        cls_rein = Reinit(domain, sp_lset, phi, diam2)
-
-    local_assembly = MPI.Wtime() - start_assembly
-    max_assembly = comm.allreduce(local_assembly, op=MPI.MAX)
-
-    # Iteration i = 0 =======
-    start_solve = MPI.Wtime()
-
-    phi.interpolate(model._get_initial_level())
-
-    #######################################################################
-    # Update model.dx, model.dS, model.ds_out
-    cells_tags, facets_tags, _, model.ds_out, _, _ = compute_tags_measures(
-        domain, phi, 1, box_mode=True
-    )
-    model.dx = Measure("dx", domain=domain, subdomain_data=cells_tags)
-    model.dS = Measure("dS", domain=domain, subdomain_data=facets_tags)
-
-    #######################################################################
-    # To calculate the velocity field
-    cls_vlty = Velocity(dim, domain, sp_vlty, model.bilinear_form, S0, S1)
-
-    cls_smt = Smooth(domain, sp_lset, phi, diam2)
-    cls_smt.run(phi)
-
-    ste_eqs = model.pde(phi)
-    if not model.mixed_space:
-        phifem_solve(nbr_ste, ste_eqs, ste_fcs, phi, rank_dim, comm)
-    else:
-        phifem_solve_mixed(nbr_ste, ste_eqs, ste_fcs, model.map)
-
-    comm.barrier()
-
-    cost = global_scalar(form(model.cost(phi, ste_fcs)), comm)
-
-    if nbr_ctr > 0:
-        eq_ctrs = model.constraint(phi, ste_fcs)
-        ctrs = global_scalar_list([form(c) for c in eq_ctrs], comm)
-        if rank == 0:
-            cls_meth = PPL(nbr_ctr, cost, ctrs)
-
-    if nbr_adj > 0:
-        adj_eqs = model.adjoint(phi, ste_fcs)
-        if not model.mixed_space:
-            phifem_solve(nbr_adj, adj_eqs, adj_fcs, phi, rank_dim, comm)
-        else:
-            phifem_solve_mixed(nbr_adj, adj_eqs, adj_fcs, model.map)
-        comm.barrier()
-
-    if nbr_to_ev_qs > 0:
-        qs_eval = global_scalar_list(to_ev_qs, comm)
-
-    cls_vlty.run(tht)  # model.dx
-    nder = global_scalar(nDJ, comm, np.sqrt)
-
-    if rank == 0:
-        lset_steps, lset_end = lsearch.get(nder)
-    else:
-        lset_steps, lset_end = None, None
-    lset_steps = comm.bcast(lset_steps, root=0)
-    lset_end = comm.bcast(lset_end, root=0)
-
-    # print ==============================================
-    if rank == 0:
-        print("> Iterations:")
-        if nbr_ctr > 0:
-            print0(0, cost, ctrs, nder, 0, cls_meth.see())
-        else:
-            print1(0, cost, nder, 0)
-        tosave.add(cost, nder)
-        if nbr_to_ev_qs > 0:
-            tosave.add_quantities(qs_eval)
-    # ====================================================
-    spaceP1 = None
-    degree_space = model.space.ufl_element().degree
-    if degree_space > 1:
-        rank_space = model.space.value_shape
-        if len(rank_space) == 1:
-            rank_space = rank_space[0]
-        spaceP1 = create_space(domain, "CG", rank=rank_space, degree=1)
-
-    with XDMFFile(comm, filename, "w") as xdmf:
-        xdmf.write_mesh(domain)
-        xdmf.write_function(phi, 0)
-
-        if degree_space == 1:
-            for f in ste_fcs:
-                xdmf.write_function(f, 0)
-            for f in adj_fcs:
-                xdmf.write_function(f, 0)
-        else:
-            ste_fcsP1 = interpolate(ste_fcs, spaceP1, name="u")
-            adj_fcsP1 = interpolate(adj_fcs, spaceP1, name="p")
-            for f in ste_fcsP1:
-                xdmf.write_function(f, 0)
-            for f in adj_fcsP1:
-                xdmf.write_function(f, 0)
-
-        xdmf.write_function(tht, 0)
-
-        for iter in range(1, niter + 1):
-
-            cls_lset.run(phi, lset_steps, lset_end)
-            # Reinitialization
-            if reinit_step and iter > start_to_check:
-                if iter % reinit_step == 0:
-                    cls_rein.run(phi, rein_steps, rein_end)
-
-            #######################################################################
-            # Update model.dx, model.dS, model.ds_out
-            cells_tags, facets_tags, _, model.ds_out, _, _ = compute_tags_measures(
-                domain, phi, 1, box_mode=True
-            )
-            model.dx = Measure("dx", domain=domain, subdomain_data=cells_tags)
-            model.dS = Measure("dS", domain=domain, subdomain_data=facets_tags)
-
-            #######################################################################
-
-            # cls_smt.run(phi) # smooth
-
-            ste_eqs = model.pde(phi)
-            if not model.mixed_space:
-                phifem_solve(nbr_ste, ste_eqs, ste_fcs, phi, rank_dim, comm)
-            else:
-                phifem_solve_mixed(nbr_ste, ste_eqs, ste_fcs, model.map)
-
-            comm.barrier()
-
-            cost = global_scalar(form(model.cost(phi, ste_fcs)), comm)
-
-            if nbr_ctr > 0:
-                eq_ctrs = model.constraint(phi, ste_fcs)
-                ctrs = global_scalar_list([form(c) for c in eq_ctrs], comm)
-
-                if rank == 0:
-                    lm = cls_meth.run(cost, ctrs)
-                else:
-                    lm = None
-                lm = comm.bcast(lm, root=0)
-                for i in range(nbr_ctr):
-                    L[i].value = lm[i]
-
-            if nbr_adj > 0:
-                adj_eqs = model.adjoint(phi, ste_fcs)
-                if not model.mixed_space:
-                    phifem_solve(nbr_adj, adj_eqs, adj_fcs, phi, rank_dim, comm)
-                else:
-                    phifem_solve_mixed(nbr_adj, adj_eqs, adj_fcs, model.map)
-                comm.barrier()
-
-            if nbr_to_ev_qs > 0:
-                qs_eval = global_scalar_list(to_ev_qs, comm)
-
-            cls_vlty.run(tht)  # model.dx
-
-            nder = global_scalar(nDJ, comm, np.sqrt)
-
-            if rank == 0:
-                lset_steps, lset_end = lsearch.get(nder)
-            else:
-                lset_steps, lset_end = None, None
-            lset_steps = comm.bcast(lset_steps, root=0)
-            lset_end = comm.bcast(lset_end, root=0)
-
-            xdmf.write_function(phi, iter)
-            if degree_space == 1:
-                for f in ste_fcs:
-                    xdmf.write_function(f, iter)
-                for f in adj_fcs:
-                    xdmf.write_function(f, iter)
-            else:
-                ste_fcsP1 = interpolate(ste_fcs, spaceP1, name="u")
-                adj_fcsP1 = interpolate(adj_fcs, spaceP1, name="p")
-                for f in ste_fcsP1:
-                    xdmf.write_function(f, iter)
-                for f in adj_fcsP1:
-                    xdmf.write_function(f, iter)
-
-            xdmf.write_function(tht, iter)
-
-            if rank == 0:
-                if nbr_ctr > 0:
-                    print0(iter, cost, ctrs, nder, lset_steps, cls_meth.see())
-                else:
-                    print1(iter, cost, nder, lset_steps)
-                tosave.add(cost, nder)
-                if nbr_to_ev_qs > 0:
-                    tosave.add_quantities(qs_eval)
-
-                if iter > start_to_check:
-                    if nbr_ctr > 0:
-                        ctrn_errs = [c - 1.0 for c in ctrs]
-                        lgrn_last = cls_meth.list_Lg[-1]
-                        lgrn_errs = [l - lgrn_last for l in cls_meth.list_Lg[-prev:-1]]
-                        cond1 = Norm(ctrn_errs, np.inf) < ctrn_tol
-                        cond2 = Norm(lgrn_errs, np.inf) < lgrn_tol * abs(lgrn_last)
-                        stop_flag = cond1 and cond2
-                    else:
-                        cost_last = tosave.cost[-1]
-                        cost_diff = [j - cost_last for j in tosave.cost[-prev:-1]]
-                        stop_flag = Norm(cost_diff, np.inf) < cost_tol * abs(cost_last)
-
-            stop_flag = comm.bcast(stop_flag, root=0)
-
-            if stop_flag:
-                if rank == 0:
-                    print("> Stopping condition reached!")
-                break
-
-    local_solve = MPI.Wtime() - start_solve
-    max_solve = comm.allreduce(local_solve, op=MPI.MAX)
-
-    if rank == 0:
-        if nbr_ctr > 0:
-            tosave.add_ppl(cls_meth)
-        tosave.add_times(max_assembly, max_solve)
-        tosave.save(model.path)
-        print(f"> Assembly time = {max_assembly} s")
-        print(f"> Resolution time = {max_solve} s")
-
-    return phi
 
 
 def runDP(

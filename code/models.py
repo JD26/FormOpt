@@ -76,7 +76,7 @@ class Compliance(Model):
         )
         self.A = lambda w: (conditional(lt(w, 0.0), 1.0, 1e-4))
         self.chi = lambda w: (conditional(lt(w, 0.0), 1.0, 0.0))
-        self.Coef = 0.1
+        self.Coef = 1.0
 
     def updateA(self, eps):
         self.A = lambda w: (conditional(lt(w, 0.0), 1.0, eps))
@@ -135,8 +135,8 @@ class Compliance(Model):
 
         nv = FacetNormal(self.domain)
 
-        B = self.Coef * dot(th, xi) * self.dx
-        B += inner(grad(th), grad(xi)) * self.dx
+        B = 0.1 * dot(th, xi) * self.dx
+        B += self.Coef * inner(grad(th), grad(xi)) * self.dx
         B += 1e4 * dot(th, nv) * dot(xi, nv) * self.ds
         for sb in self.sub:
             B += 1e4 * sb * dot(th, xi) * self.dx

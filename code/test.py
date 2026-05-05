@@ -658,7 +658,7 @@ def test_06():
         domain0, space0, boundary_tags, [dir_mkr], rank_dim
     )
 
-    dirbc_total = fop.homogeneus_boundary(domain0, space0, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain0, space0, dim, rank_dim)
 
     # Create measures to apply Neumman condition
     ds_parts = fop.marked_ds(
@@ -752,7 +752,7 @@ def test_06():
     dirbc_partial = fop.homogeneous_dirichlet(
         domain, space, boundary_tags, [dir_mkr], rank_dim
     )
-    dirbc_total = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     # Boundary to apply Neumann conditions
     ds_parts = fop.marked_ds(
         domain, boundary_tags, [bR_mkr, neu_mkrA, neu_mkrB, neu_mkrC, bL_mkr]
@@ -916,7 +916,7 @@ def test_07():
             domain0, space0, boundary_tags, [dir_mkr], rank_dim
         )
 
-        dirbc_total = fop.homogeneus_boundary(domain0, space0, dim, rank_dim)
+        dirbc_total = fop.homogeneous_boundary(domain0, space0, dim, rank_dim)
 
         # Measures
         ds_parts = fop.marked_ds(
@@ -999,7 +999,7 @@ def test_07():
     dirbc_partial = fop.homogeneous_dirichlet(
         domain, space, boundary_tags, [dir_mkr], rank_dim
     )
-    dirbc_total = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     # Boundary to force application
     ds_parts = fop.marked_ds(
         domain, boundary_tags, [bR_mkr, neu_mkrA, neu_mkrB, neu_mkrC, bL_mkr]
@@ -1168,7 +1168,7 @@ def test_08():
             domain0, space0, boundary_tags, [dir_mkr], rank_dim
         )
 
-        dirbc_total = fop.homogeneus_boundary(domain0, space0, dim, rank_dim)
+        dirbc_total = fop.homogeneous_boundary(domain0, space0, dim, rank_dim)
 
         # Measures
         ds_parts = fop.marked_ds(
@@ -1252,7 +1252,7 @@ def test_08():
     dirbc_partial = fop.homogeneous_dirichlet(
         domain, space, boundary_tags, [dir_mkr], rank_dim
     )
-    dirbc_total = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain, space, dim, rank_dim)
 
     # Boundary to force application
     ds_parts = fop.marked_ds(
@@ -1429,7 +1429,7 @@ def test_10():
     # Space
     space = fop.create_space(domain, "CG", rank_dim)
     # Dirichlet conditions
-    dirichlet_bcs = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirichlet_bcs = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     area = 0.6
     # Create the model
     md = Heat(dim, domain, space, dirichlet_bcs, area, test_path)
@@ -1520,7 +1520,7 @@ def test_11():
     # Space
     space = fop.create_space(domain, "CG", rank_dim)
     # Dirichlet conditions
-    dirichlet_bcs = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirichlet_bcs = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     area = 0.5
     # Create the model
     md = Heat(dim, domain, space, dirichlet_bcs, area, test_path, "1Load")
@@ -1837,7 +1837,7 @@ def test_14(test_path=Path("../results/t14/"), r=10.0, tol=1e-3):
     md.save_initial_level(comm)
 
     md.runDP(
-        niter=300,
+        niter=150,
         lv_iter=(10, 16),
         lv_time=(1e-3, 1.0),
         reinit_step=6,
@@ -3051,7 +3051,7 @@ def test_34():
         domain0, space0, boundary_tags, [dir_mkr], rank_dim
     )
 
-    dirbc_total = fop.homogeneus_boundary(domain0, space0, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain0, space0, dim, rank_dim)
 
     # Create measures to apply Neumman condition
     ds_parts = fop.marked_ds(
@@ -3174,7 +3174,7 @@ def test_34():
     dirbc_partial = fop.homogeneous_dirichlet(
         domain, space, boundary_tags, [dir_mkr], rank_dim
     )
-    dirbc_total = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     # Boundary to apply Neumann conditions
     ds_parts = fop.marked_ds(
         domain,
@@ -3377,7 +3377,7 @@ def test_35():
             domain0, space0, boundary_tags, [dir_mkr], rank_dim
         )
 
-        dirbc_total = fop.homogeneus_boundary(domain0, space0, dim, rank_dim)
+        dirbc_total = fop.homogeneous_boundary(domain0, space0, dim, rank_dim)
 
         # Create measures to apply Neumman condition
         ds_parts = fop.marked_ds(
@@ -3500,7 +3500,7 @@ def test_35():
     dirbc_partial = fop.homogeneous_dirichlet(
         domain, space, boundary_tags, [dir_mkr], rank_dim
     )
-    dirbc_total = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     # Boundary to apply Neumann conditions
     ds_parts = fop.marked_ds(
         domain,
@@ -3715,7 +3715,7 @@ def test_36():
             domain0, space0, boundary_tags, [dir_mkr], rank_dim
         )
 
-        dirbc_total = fop.homogeneus_boundary(domain0, space0, dim, rank_dim)
+        dirbc_total = fop.homogeneous_boundary(domain0, space0, dim, rank_dim)
 
         # Create measures to apply Neumman condition
         ds_parts = fop.marked_ds(
@@ -3838,7 +3838,7 @@ def test_36():
     dirbc_partial = fop.homogeneous_dirichlet(
         domain, space, boundary_tags, [dir_mkr], rank_dim
     )
-    dirbc_total = fop.homogeneus_boundary(domain, space, dim, rank_dim)
+    dirbc_total = fop.homogeneous_boundary(domain, space, dim, rank_dim)
     # Boundary to apply Neumann conditions
     ds_parts = fop.marked_ds(
         domain,
@@ -4632,23 +4632,23 @@ def test_55(value, test_path):
 
 
 def test_56():
-    test_55(0.01, Path("../results/t56/"))
+    test_55(0.5, Path("../results/t56/"))
 
 
 def test_57():
-    test_55(0.1, Path("../results/t57/"))
+    test_55(1.0, Path("../results/t57/"))
 
 
 def test_58():
-    test_55(1.0, Path("../results/t58/"))
+    test_55(1.5, Path("../results/t58/"))
 
 
 def test_59():
-    test_55(10.0, Path("../results/t59/"))
+    test_55(2.0, Path("../results/t59/"))
 
 
 def test_60():
-    test_55(100.0, Path("../results/t60/"))
+    test_55(2.5, Path("../results/t60/"))
 
 
 test_functions = {

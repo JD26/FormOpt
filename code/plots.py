@@ -190,6 +190,65 @@ def plot_deformations(
         plt.savefig(filename, dpi=300, pad_inches=0, bbox_inches="tight")
 
 
+def multiply_lv_by_u(test_path, niter):
+    with h5py.File(test_path / "results.h5", "r+") as f:
+        phi = f["/Function/phi"][str(niter)][:, 0]
+        u0_dset = f["/Function/u0"][str(niter)]
+        u0 = u0_dset[:, 0]
+        # multiply
+        u0_new = phi * u0
+        # write back
+        u0_dset[:, 0] = u0_new
+
+
+def plot_u0(
+    test_path,
+    niter,
+    limits,
+    figsize=None,
+    boundaries=None,
+    lw=2,
+    filename=None,
+    title=None,
+):
+
+    points, cells, u0 = None, None, None
+
+    with h5py.File(test_path / "results.h5", "r") as f:
+        points = f["/Mesh/mesh/geometry"][:]
+        cells = f["/Mesh/mesh/topology"][:]
+        u0_group = f["/Function/u0"]
+        u0 = u0_group[str(niter)][:, 0]
+
+    x_coords, y_coords = points[:, 0], points[:, 1]
+    triang = mtri.Triangulation(x_coords, y_coords, cells)
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # ax.tricontourf(triang, u0, levels=np.linspace(u0.min(), u0.max(), 20))
+
+    cs = ax.tricontour(
+        triang, u0, levels=np.linspace(u0.min(), u0.max(), 15), colors="black"
+    )
+    ax.clabel(cs, inline=True, fontsize=8, fmt="%.2f")
+    ax.set_aspect("equal")
+    ax.set_xlim(limits[0])
+    ax.set_ylim(limits[1])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.tick_params(bottom=False, left=False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    if title:
+        plt.title(title)
+
+    if filename:
+        plt.savefig(filename, dpi=300, pad_inches=0, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
+
+
 def plot_lv(
     test_path,
     niter,
@@ -199,6 +258,7 @@ def plot_lv(
     boundaries=None,
     lw=2,
     filename=None,
+    title=None,
 ):
 
     points, cells, phi = None, None, None
@@ -234,12 +294,18 @@ def plot_lv(
     for spine in ax.spines.values():
         spine.set_visible(False)
 
+    if title:
+        plt.title(title)
+
     if boundaries:
         for xy, cl in boundaries:
             ax.plot(xy[:, 0], xy[:, 1], color=cl, linewidth=lw)
 
     if filename:
         plt.savefig(filename, dpi=300, pad_inches=0, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
 
 
 def plot_vm(
@@ -1040,7 +1106,7 @@ def plot_volume(volume_values, figsize=None, filename=None):
         plt.show()
 
 
-def plot2(values, title="values", figsize=None, filename=None):
+def plot2(values, title="values", figsize=None, filename=None, hline=None):
     iterations = np.arange(0, len(values))
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -1051,6 +1117,15 @@ def plot2(values, title="values", figsize=None, filename=None):
         ax.set_ylabel(title)
     ax.grid(True, linestyle="--", alpha=0.7)
     fig.tight_layout()
+
+    if hline:
+        ax.plot(
+            iterations,
+            np.full_like(iterations, hline),
+            color="black",
+            linestyle="--",
+            linewidth=2,
+        )
 
     if filename:
         plt.savefig(filename, dpi=300, bbox_inches="tight")

@@ -29,13 +29,10 @@
 			"mpirun",
 			"Sobolev"
 		],
-		"cSpell.ignoreWords": [
-			"mpirun"
-		],
 		"[latex]": {
 			"editor.wordWrap": "off",
 			"editor.rulers": [80],
 			"editor.renderWhitespace": "boundary"
-			}		
+			}
 	}
 }
