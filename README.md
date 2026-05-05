@@ -19,6 +19,7 @@ If you have any questions, suggestions, or need assistance with this project, fe
 ## Repository structure
 
 ```
+├── paper/                      # Submitted manuscript
 ├── code/       		# Python scripts and numerical tests
 │ 	├── formopt.py		# Classes and functions
 │ 	├── models.py		# Model problems
@@ -27,7 +28,7 @@ If you have any questions, suggestions, or need assistance with this project, fe
 │ 	├── plots.py		# Functions for plotting
 │ 	├── Examples.ipynb	# Examples for manuscript
 │	└── Tutorial.ipynb	# Examples with detailed explanations
-├── tex/        		# LaTeX source files of the article
+├── arxiv/        		# LaTeX source files of the arxiv preprint
 ├── results/    		# Directory structure for numerical results
 └── docs/       		# Markdown documentation files
 ```
