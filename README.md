@@ -9,7 +9,7 @@ The implementation supports three different parallel computing modes: data paral
 
 [API reference](https://jd26.github.io/FormOpt/)
 
-Toolbox paper: [preprint](https://arxiv.org/abs/2601.05709)
+Toolbox paper: [published article](https://www.sciencedirect.com/science/article/pii/S0168874X26000879), [arXiv preprint](https://arxiv.org/abs/2601.05709) 
 
 ## Contact:
 If you have any questions, suggestions, or need assistance with this project, feel free to reach out:
@@ -64,13 +64,13 @@ Currently, `FormOpt` runs under FEniCSx 0.9 (we are working in a version for FEn
 
 ## Example: Heat conduction
 
-![Initial distribution](tex/heat1_0.png)
+![Initial distribution](arxiv/heat1_0.png)
 
-![Optimal distribution](tex/heat1_1.png)
+![Optimal distribution](arxiv/heat1_1.png)
 
 ## Example: Inverse elasticity
 
-![Initial guess](tex/inv2_0.png)
+![Initial guess](arxiv/inv2_0.png)
 
-![Recovered inclusions](tex/inv2_1.png)
+![Recovered inclusions](arxiv/inv2_1.png)
 
