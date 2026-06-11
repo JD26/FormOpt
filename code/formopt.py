@@ -2915,8 +2915,8 @@ def create_nonlinear_solver(comm, F, bcs, J, u, initial):
     """
     problem = NonlinearProblem(F, u, bcs=bcs, J=J)
     solver = NewtonSolver(comm, problem)
-    solver.convergence_criterion = "incremental"
-    solver.rtol = np.sqrt(np.finfo(default_real_type).eps) * 1e-2
+    solver.convergence_criterion = "residual"
+    solver.rtol = 1e-6
     solver.max_it = 40
 
     ksp = solver.krylov_solver
@@ -2924,17 +2924,17 @@ def create_nonlinear_solver(comm, F, bcs, J, u, initial):
     option_prefix = ksp.getOptionsPrefix()
 
     # Higher computational cost
-    opts[f"{option_prefix}ksp_type"] = "preonly"
-    opts[f"{option_prefix}pc_type"] = "lu"
-    opts[f"{option_prefix}pc_factor_mat_solver_type"] = "superlu_dist"
+    # opts[f"{option_prefix}ksp_type"] = "preonly"
+    # opts[f"{option_prefix}pc_type"] = "lu"
+    # opts[f"{option_prefix}pc_factor_mat_solver_type"] = "superlu_dist"
 
     # Lower computational cost
-    # opts[f"{option_prefix}ksp_type"] = "gmres"
-    # opts[f"{option_prefix}ksp_rtol"] = 1.0e-8
-    # opts[f"{option_prefix}pc_type"] = "hypre"
-    # opts[f"{option_prefix}pc_hypre_type"] = "boomeramg"
-    # opts[f"{option_prefix}pc_hypre_boomeramg_max_iter"] = 1
-    # opts[f"{option_prefix}pc_hypre_boomeramg_cycle_type"] = "v"
+    opts[f"{option_prefix}ksp_type"] = "gmres"
+    opts[f"{option_prefix}ksp_rtol"] = 1e-6
+    opts[f"{option_prefix}pc_type"] = "hypre"
+    opts[f"{option_prefix}pc_hypre_type"] = "boomeramg"
+    opts[f"{option_prefix}pc_hypre_boomeramg_max_iter"] = 1
+    opts[f"{option_prefix}pc_hypre_boomeramg_cycle_type"] = "v"
 
     ksp.setFromOptions()
 
@@ -3135,28 +3135,6 @@ def runDP(
             ste_pbs.append(
                 create_nonlinear_solver(
                     comm, true_weak_form, bcs, true_jacobian, ste_fcs[i], ini_func
-                )
-            )
-        elif model.ini_linear:
-            weak_form, bcs, jacobian, seudo_state, ini_linear, factor_pars = ste_problem
-            factor, nbr_newton_steps = factor_pars
-            true_factor = const(domain, 0.0)
-            true_weak_form = replace(
-                weak_form, {seudo_state: ste_fcs[i], factor: true_factor}
-            )
-            true_jacobian = replace(
-                jacobian, {seudo_state: ste_fcs[i], factor: true_factor}
-            )
-            ste_pbs.append(
-                create_nonlinear_solver_with_ini_linear_and_factor(
-                    comm,
-                    true_weak_form,
-                    bcs,
-                    true_jacobian,
-                    ste_fcs[i],
-                    ini_linear,
-                    true_factor,
-                    nbr_newton_steps,
                 )
             )
         else:

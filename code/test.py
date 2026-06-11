@@ -1795,7 +1795,7 @@ def test_13():
     md.runTP(niter=250, ctrn_tol=1e-3, lgrn_tol=1e-2)
 
 
-def test_14(test_path=Path("../results/t14/"), r=10.0, tol=1e-3):
+def test_14(test_path=Path("../results/t14/"), r=10.0):
     """
     Logistic equation (r = 10) - Data Parallelism
 
@@ -1843,7 +1843,7 @@ def test_14(test_path=Path("../results/t14/"), r=10.0, tol=1e-3):
         reinit_step=6,
         reinit_pars=(20, 0.1),
         ctrn_tol=1e-3,
-        lgrn_tol=tol,
+        lgrn_tol=1e-3,
         dfactor=1.0,
         smooth=True,
     )
@@ -1855,7 +1855,7 @@ def test_15():
     """
 
     test_path = Path("../results/t15/")
-    test_14(test_path, r=40, tol=1e-3)
+    test_14(test_path, r=40)
 
 
 def test_16():
@@ -1864,7 +1864,7 @@ def test_16():
     """
 
     test_path = Path("../results/t16/")
-    test_14(test_path, r=100, tol=5e-3)
+    test_14(test_path, r=100)
 
 
 def test_17(test_path=Path("../results/t17/"), vol=0.3):
