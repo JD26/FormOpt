@@ -61,6 +61,11 @@ Currently, `FormOpt` runs under FEniCSx 0.9 (we are working in a version for FEn
 	```bash
 	conda install -c conda-forge pygmsh=7.1.17 h5py=3.10.0
 	```
+## Example: Compliance Minimization (L-Bracket)
+This test was performed by **Max Boilledieu**
+Email: **<max.boilledieu@stud.uni-due.de>**
+
+![Optimal distribution](arxiv/L-Bracket.png)
 
 ## Example: Heat conduction
 
