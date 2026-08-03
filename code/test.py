@@ -12,6 +12,7 @@ from models import (
     Gripping,
     SVK,
     NHK,
+    CompliancePenalty,
 )
 
 import numpy as np
@@ -61,6 +62,7 @@ test_42 : Symmetric cantilever 3D - Data Parallelism (1 process)
 test_43 : Symmetric cantilever 3D - Data Parallelism (2 process)
 test_44 : Symmetric cantilever 3D - Data Parallelism (4 process)
 test_45 : Symmetric Cantilever 2D with several Ersatz material
+test_70 :  L-Bracket - Linear
 """
 
 
@@ -4651,6 +4653,126 @@ def test_60():
     test_55(2.5, Path("../results/t60/"))
 
 
+def test_70():
+    """
+    name  : L-Bracket - Linear
+    run   : `mpirun -n <nbr of processes> python test.py 70`
+    """
+
+    ##############
+    # Parameters #
+    ##############
+    test_name = "L-Bracket - Linear"
+    test_path = Path("../results/t70/")
+    dim = 2
+    rank_dim = 2
+    mesh_size = 0.015
+    alpha0 = 0.20
+    area = 4.0
+    alpha = alpha0 * area
+
+    ###############################
+    # Domain, mesh and conditions #
+    ###############################
+    vertices = np.array(
+        [
+            (0.0, 0.0),
+            (2.5, 0.0),
+            (2.5, 1.0),
+            (2.4, 1.0),
+            (1.0, 1.0),
+            (1.0, 2.5),
+            (0.0, 2.5),
+        ]
+    )
+    dir_idx, dir_mkr = [6], 1
+    neu_idx, neu_mkr = [3], 2
+    boundary_parts = [(dir_idx, dir_mkr, "dir"), (neu_idx, neu_mkr, "neu")]
+    output = fop.create_domain_2d_DP(
+        vertices, boundary_parts, mesh_size, path=test_path, plot=False
+    )
+    domain, nbr_tri, boundary_tags = output
+
+    if rank == 0:
+        print("\n\t" + test_name + "\n")
+        print(f"> Path = {test_path}")
+        print(f"> Nbr of triangles = {nbr_tri}")
+
+    space = fop.create_space(domain, "CG", rank_dim)
+    dirichlet_bcs = fop.homogeneous_dirichlet(
+        domain, space, boundary_tags, [dir_mkr], rank_dim
+    )
+    ds_g = fop.marked_ds(domain, boundary_tags, [neu_mkr])
+    g = (0.0, -10.0)
+
+    #########
+    # Model #
+    #########
+
+    md = CompliancePenalty(
+        dim, domain, space, g, ds_g[0], dirichlet_bcs, alpha, test_path
+    )
+
+    @fop.region_of(domain)
+    def sub_domain(x):
+        ineqs = [x[0] - 2.40, x[1] - 0.90]
+        return ineqs
+
+    md.sub = [sub_domain.expression()]
+
+    #################
+    # Initial guess #
+    #################
+
+    # Corners
+    centers = [(0.50, 2.5), (0.0, 0.0), (2.5, 0.0)]
+    radii = [0.25, 0.25, 0.25]
+
+    # Canva
+    centers += [(0.0, 0.75), (0.0, 1.0), (0.0, 1.25), (0.0, 1.50), (0.0, 1.75)]
+    radii += [0.1, 0.1, 0.1, 0.1, 0.1]
+    centers += [(1.0, 1.75), (1.0, 1.50), (1.0, 1.25)]
+    radii += [0.1, 0.1, 0.1]
+    centers += [(0.75, 0.0), (1.0, 0.0), (1.25, 0.0), (1.50, 0.0), (1.75, 0.0)]
+    radii += [0.1, 0.1, 0.1, 0.1, 0.1]
+
+    # Bottom
+    centers += [(1.0, 0.50), (1.25, 0.50), (1.50, 0.50), (1.75, 0.50)]
+    radii += [0.1, 0.1, 0.1, 0.1]
+    centers += [(0.875, 0.25), (1.125, 0.25), (1.375, 0.25), (1.625, 0.25)]
+    radii += [0.05, 0.05, 0.05, 0.05]
+    centers += [(0.875, 0.75), (1.125, 0.75), (1.375, 0.75), (1.625, 0.75)]
+    radii += [0.05, 0.05, 0.05, 0.05]
+
+    # Up
+    centers += [(0.25, 0.875), (0.25, 1.125), (0.25, 1.375), (0.25, 1.625)]
+    radii += [0.05, 0.05, 0.05, 0.05]
+    centers += [(0.75, 0.875), (0.75, 1.125), (0.75, 1.375), (0.75, 1.625)]
+    radii += [0.05, 0.05, 0.05, 0.05]
+    centers += [(0.50, 0.75), (0.50, 1.0), (0.50, 1.25), (0.50, 1.50), (0.50, 1.75)]
+    radii += [0.1, 0.1, 0.1, 0.1, 0.1]
+
+    centers = np.array(centers)
+    radii = np.array(radii)
+    md.create_initial_level(centers, radii)
+    md.save_initial_level(comm)
+
+    ######################
+    # Run the simulation #
+    ######################
+    md.runDP(
+        niter=400,
+        dfactor=1e-2,
+        lv_iter=(12, 24),
+        lv_time=(1e-3, 1.0),
+        cost_tol=1e-3,
+        smooth=True,
+        reinit_step=4,
+        reinit_pars=(6, 0.01),
+        random_pars=(26, 0.075),
+    )
+
+
 test_functions = {
     "01": test_01,
     "02": test_02,
@@ -4698,6 +4820,7 @@ test_functions = {
     "58": test_58,
     "59": test_59,
     "60": test_60,
+    "70": test_70,
 }
 
 

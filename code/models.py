@@ -144,6 +144,102 @@ class Compliance(Model):
         return B, False
 
 
+class CompliancePenalty(Model):
+    """
+    Models the compliance minimizatio
+    problem for linear elasticity (with volume penalty).
+    """
+
+    def __init__(self, dim, domain, space, g, ds_g, dir_bcs, alpha, path):
+
+        self.dim = dim
+        self.domain = domain
+        self.space = space
+        self.path = path
+
+        self.dx = Measure("dx", domain=domain)
+        self.ds = Measure("ds", domain=domain)
+        self.g = as_vector(g)
+        self.ds_g = ds_g
+        self.bc = dir_bcs
+        self.alpha = alpha
+        self.sub = []
+
+        E, nu = 200.0, 0.3
+        lmbda = E * nu / (1.0 + nu) / (1.0 - 2.0 * nu)
+        mu = E / 2.0 / (1.0 + nu)
+
+        self.zero_vec = as_vector(dim * [0.0])
+        self.Id = Identity(dim)
+        self.epsilon = lambda w: sym(grad(w))
+        self.sigma = lambda w: (
+            lmbda * nabla_div(w) * self.Id + 2.0 * mu * self.epsilon(w)
+        )
+        self.A = lambda w: (conditional(lt(w, 0.0), 1.0, 1e-2))
+        self.chi = lambda w: (conditional(lt(w, 0.0), 1.0, 0.0))
+
+    def updateA(self, eps):
+        self.A = lambda w: (conditional(lt(w, 0.0), 1.0, eps))
+
+    def pde(self, phi):
+
+        u = TrialFunction(self.space)
+        v = TestFunction(self.space)
+        su = self.sigma(u)
+        ev = self.epsilon(v)
+
+        W = self.A(phi) * inner(su, ev) * self.dx
+        W -= dot(self.g, v) * self.ds_g
+
+        return [(W, self.bc)]
+
+    def adjoint(self, phi, U):
+        return []
+
+    def cost(self, phi, U):
+
+        u = U[0]
+        su = self.sigma(u)
+        eu = self.epsilon(u)
+
+        J = self.A(phi) * (inner(su, eu)) * self.dx + self.alpha *  self.chi(phi) * self.dx
+
+        return J
+
+    def constraint(self, phi, U):
+        return []
+
+    def derivative(self, phi, U, P):
+
+        u = U[0]
+        su = self.sigma(u)
+        eu = self.epsilon(u)
+
+        S0_J = self.zero_vec
+        S1_J = 2.0 * grad(u).T * su
+        S1_J -= inner(su, eu) * self.Id
+        S1_J *= self.A(phi)
+        S1_J += self.alpha *  self.chi(phi) * self.Id
+
+        S0 = (S0_J, [])
+        S1 = (S1_J, [])
+
+        return S0, S1
+
+    def bilinear_form(self, th, xi):
+
+        nv = FacetNormal(self.domain)
+
+        B =  dot(th, xi) * self.dx
+        B += 0.1 * inner(grad(th), grad(xi)) * self.dx
+        B += 1e4 * dot(th, nv) * dot(xi, nv) * self.ds
+        for sb in self.sub:
+            B += 1e4 * sb * dot(th, xi) * self.dx
+
+        return B, False
+
+
+
 class CompliancePlus(Model):
     """
     Models a compliance optimization
