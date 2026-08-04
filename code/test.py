@@ -4772,6 +4772,91 @@ def test_70():
         random_pars=(26, 0.075),
     )
 
+def test_71():
+    """
+    name  : T-Frame - Linear
+    index : 10
+    run   : `mpirun -n <nbr of processes> python test_max.py 10`
+    """
+
+    ##############
+    # Parameters #
+    ##############
+    test_name = "T-Frame Linear"
+    test_path = Path("../results/t71/")
+    dim = 2
+    rank_dim = 2
+    mesh_size = 0.015
+    alpha0 = 0.60
+    area = 1.25
+    alpha = alpha0 * area
+
+    ###############################
+    # Domain, mesh and conditions #
+    ###############################
+    vertices = np.array([(0.5, 0.0), (1.0, 0.0), (1.0, 1.0), (1.4, 1.0), (1.5, 1.0), (1.5, 1.5), (0, 1.5), (0.0, 1.0), (0.1, 1.0), (0.5, 1.0)])
+    dir_idx, dir_mkr = [1], 1
+    neu_idx, neu_mkr = [4, 8], 2
+    boundary_parts = [(dir_idx, dir_mkr, "dir"), (neu_idx, neu_mkr, "neu")]
+    output = fop.create_domain_2d_DP(vertices, boundary_parts, mesh_size, path=test_path, plot=False)
+    domain, nbr_tri, boundary_tags = output
+
+    if rank == 0:
+        print("\n\t" + test_name + "\n")
+        print(f"> Path = {test_path}")
+        print(f"> Nbr of triangles = {nbr_tri}")
+
+    space = fop.create_space(domain, "CG", rank_dim)
+    dirichlet_bcs = fop.homogeneous_dirichlet(domain, space, boundary_tags, [dir_mkr], rank_dim)
+    ds_g = fop.marked_ds(domain, boundary_tags, [neu_mkr])
+    g = (0.0, -10.0)
+
+    #########
+    # Model #
+    #########
+    md = CompliancePenalty(
+        dim, domain, space, g, ds_g[0], dirichlet_bcs, alpha, test_path
+    )
+
+    @fop.region_of(domain)
+    def sub_domain1(x):
+        ineqs = [x[0]-1.4, 1.1-x[1]]
+        return ineqs
+    
+    @fop.region_of(domain)
+    def sub_domain2(x):
+        ineqs = [0.1-x[0], 1.1-x[1]]
+        return ineqs
+
+    md.sub = [sub_domain1.expression(), sub_domain2.expression()]
+
+    #################
+    # Initial guess #
+    #################
+    centers = [(0.65, 0.0), (0.85, 0.0), (0.5, 0.25), (0.5, 0.5), (0.5, 0.75), (1.0, 0.25), (1.0, 0.5), (1.0, 0.75)]
+    centers += [(0.25, 1.5), (0.50, 1.50), (0.75, 1.50), (1.0, 1.50), (1.25, 1.50)]
+    centers += [(0.0, 1.35), (0.0, 1.20), (1.5, 1.35), (1.5, 1.20)]
+    centers += [(0.25, 1.0), (0.40, 1.0), (1.10, 1.0), (1.25, 1.0)]
+    centers += [(0.75, 0.25), (0.75, 0.40), (0.75, 0.55), (0.75, 0.70), (0.75, 0.85), (0.75, 1.0)]
+    centers += [(0.25, 1.25), (0.40, 1.25), (0.55, 1.25), (0.70, 1.25), (0.85, 1.25), (1.0, 1.25), (1.15, 1.25), (1.30, 1.25)]
+
+    centers = np.array(centers)
+    radii = np.repeat(0.1, centers.shape[0])
+    md.create_initial_level(centers, radii)
+    md.save_initial_level(comm)
+
+    ######################
+    # Run the simulation #
+    ######################
+    md.runDP(niter=300,
+                dfactor=1e-2,
+                lv_iter=(12, 24),
+                lv_time=(1e-3, 1.0),
+                cost_tol=1e-3,
+                smooth=True,
+                reinit_step=4,
+                reinit_pars=(6, 0.01),
+                random_pars=(26, 0.075))
 
 test_functions = {
     "01": test_01,
@@ -4821,6 +4906,7 @@ test_functions = {
     "59": test_59,
     "60": test_60,
     "70": test_70,
+    "71": test_71,
 }
 
 

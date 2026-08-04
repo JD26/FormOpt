@@ -1,0 +1,95 @@
+Info    : Reading '../results/t71/domain.msh'...
+Info    : 21 entities
+Info    : 6823 nodes
+Info    : 13288 elements
+Info    : Done reading '../results/t71/domain.msh'
+
+	T-Frame Linear
+
+> Path = ../results/t71
+> Nbr of triangles = 13240
+> Iterations:
+i =   0 | cost = 2.261356 | nder = 20.9490 | steps =  0 | 
+i =   1 | cost = 1.921049 | nder = 16.6846 | steps = 12 | 
+i =   2 | cost = 1.679910 | nder = 15.4332 | steps = 12 | 
+i =   3 | cost = 1.438875 | nder = 13.7915 | steps = 12 | 
+i =   4 | cost = 1.315680 | nder = 9.7627 | steps = 14 | 
+i =   5 | cost = 1.234945 | nder = 7.7643 | steps = 15 | 
+i =   6 | cost = 1.170952 | nder = 6.3339 | steps = 14 | 
+i =   7 | cost = 1.117878 | nder = 5.2464 | steps = 17 | 
+i =   8 | cost = 1.076404 | nder = 4.4076 | steps = 16 | 
+i =   9 | cost = 1.041841 | nder = 3.7192 | steps = 17 | 
+i =  10 | cost = 1.011849 | nder = 3.1190 | steps = 17 | 
+i =  11 | cost = 0.988020 | nder = 2.7079 | steps = 16 | 
+i =  12 | cost = 0.965148 | nder = 2.3167 | steps = 19 | 
+i =  13 | cost = 0.947621 | nder = 2.0689 | steps = 18 | 
+i =  14 | cost = 0.932285 | nder = 1.9152 | steps = 18 | 
+i =  15 | cost = 0.917360 | nder = 1.7253 | steps = 19 | 
+i =  16 | cost = 0.901985 | nder = 1.5990 | steps = 15 | 
+i =  17 | cost = 0.890890 | nder = 1.4964 | steps = 18 | 
+i =  18 | cost = 0.878625 | nder = 1.4100 | steps = 17 | 
+i =  19 | cost = 0.868768 | nder = 1.3268 | steps = 16 | 
+i =  20 | cost = 0.859483 | nder = 1.2748 | steps = 17 | 
+i =  21 | cost = 0.849249 | nder = 1.2040 | steps = 17 | 
+i =  22 | cost = 0.840234 | nder = 1.1555 | steps = 16 | 
+i =  23 | cost = 0.831578 | nder = 1.0784 | steps = 18 | 
+i =  24 | cost = 0.825850 | nder = 1.0603 | steps = 17 | 
+i =  25 | cost = 0.818678 | nder = 1.0160 | steps = 18 | 
+i =  26 | cost = 0.812702 | nder = 0.9927 | steps = 16 | 
+i =  27 | cost = 0.805075 | nder = 0.9517 | steps = 18 | 
+i =  28 | cost = 0.799677 | nder = 0.9147 | steps = 18 | 
+i =  29 | cost = 0.794179 | nder = 0.8849 | steps = 18 | 
+i =  30 | cost = 0.788882 | nder = 0.8563 | steps = 18 | 
+i =  31 | cost = 0.783777 | nder = 0.8283 | steps = 18 | 
+i =  32 | cost = 0.777340 | nder = 0.7976 | steps = 16 | 
+i =  33 | cost = 0.773419 | nder = 0.7790 | steps = 17 | 
+i =  34 | cost = 0.768834 | nder = 0.7541 | steps = 15 | 
+i =  35 | cost = 0.764655 | nder = 0.7366 | steps = 18 | 
+i =  36 | cost = 0.760735 | nder = 0.7173 | steps = 19 | 
+i =  37 | cost = 0.756871 | nder = 0.7029 | steps = 17 | 
+i =  38 | cost = 0.754850 | nder = 0.6972 | steps = 20 | 
+i =  39 | cost = 0.751215 | nder = 0.6736 | steps = 17 | 
+i =  40 | cost = 0.747571 | nder = 0.6583 | steps = 19 | 
+i =  41 | cost = 0.744376 | nder = 0.6455 | steps = 16 | 
+i =  42 | cost = 0.742069 | nder = 0.6316 | steps = 19 | 
+i =  43 | cost = 0.739812 | nder = 0.6284 | steps = 18 | 
+i =  44 | cost = 0.737296 | nder = 0.6149 | steps = 18 | 
+i =  45 | cost = 0.734960 | nder = 0.6139 | steps = 20 | 
+i =  46 | cost = 0.732977 | nder = 0.5988 | steps = 17 | 
+i =  47 | cost = 0.731457 | nder = 0.5947 | steps = 19 | 
+i =  48 | cost = 0.728777 | nder = 0.5723 | steps = 17 | 
+i =  49 | cost = 0.727356 | nder = 0.5663 | steps = 17 | 
+i =  50 | cost = 0.725035 | nder = 0.5577 | steps = 21 | 
+i =  51 | cost = 0.723692 | nder = 0.5574 | steps = 18 | 
+i =  52 | cost = 0.721526 | nder = 0.5493 | steps = 21 | 
+i =  53 | cost = 0.720381 | nder = 0.5338 | steps = 16 | 
+i =  54 | cost = 0.719791 | nder = 0.5377 | steps = 20 | 
+i =  55 | cost = 0.718371 | nder = 0.5256 | steps = 21 | 
+i =  56 | cost = 0.717422 | nder = 0.5191 | steps = 18 | 
+i =  57 | cost = 0.716143 | nder = 0.5074 | steps = 18 | 
+i =  58 | cost = 0.715640 | nder = 0.5084 | steps = 18 | 
+i =  59 | cost = 0.714824 | nder = 0.5144 | steps = 17 | 
+i =  60 | cost = 0.714140 | nder = 0.4978 | steps = 17 | 
+i =  61 | cost = 0.713518 | nder = 0.4884 | steps = 18 | 
+i =  62 | cost = 0.712788 | nder = 0.4921 | steps = 18 | 
+i =  63 | cost = 0.712505 | nder = 0.4914 | steps = 19 | 
+i =  64 | cost = 0.711980 | nder = 0.4913 | steps = 18 | 
+i =  65 | cost = 0.711568 | nder = 0.4811 | steps = 18 | 
+i =  66 | cost = 0.711214 | nder = 0.4720 | steps = 17 | 
+i =  67 | cost = 0.710955 | nder = 0.4601 | steps = 17 | 
+i =  68 | cost = 0.710503 | nder = 0.4728 | steps = 18 | 
+i =  69 | cost = 0.710510 | nder = 0.4745 | steps = 20 | 
+i =  70 | cost = 0.710212 | nder = 0.4706 | steps = 18 | 
+i =  71 | cost = 0.709409 | nder = 0.4540 | steps = 17 | 
+i =  72 | cost = 0.709613 | nder = 0.4681 | steps = 21 | 
+i =  73 | cost = 0.709544 | nder = 0.4767 | steps = 17 | 
+i =  74 | cost = 0.709611 | nder = 0.4966 | steps = 20 | 
+i =  75 | cost = 0.709325 | nder = 0.4824 | steps = 18 | 
+i =  76 | cost = 0.708781 | nder = 0.4527 | steps = 17 | 
+i =  77 | cost = 0.709302 | nder = 0.4607 | steps = 20 | 
+i =  78 | cost = 0.709010 | nder = 0.4623 | steps = 18 | 
+i =  79 | cost = 0.708857 | nder = 0.4684 | steps = 19 | 
+i =  80 | cost = 0.709047 | nder = 0.4737 | steps = 19 | 
+> Stopping condition reached!
+> Assembly time = 4.543951579999998 s
+> Resolution time = 21.013364441999954 s

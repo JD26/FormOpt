@@ -61,15 +61,17 @@ Currently, `FormOpt` runs under FEniCSx 0.9 (we are working in a version for FEn
 	```bash
 	conda install -c conda-forge pygmsh=7.1.17 h5py=3.10.0
 	```
-## Example: Compliance Minimization (L-Bracket)
-This test was performed by **Max Boilledieu**
+## Example: Compliance Minimization, L-Bracket and T-Frame
+These tests were performed by **Max Boilledieu** during the summer of 2026 in Essen.
 
 Email: **<max.boilledieu@stud.uni-due.de>**
 
-The implementation can be found here: [Source code (test.py, line 4656)](https://github.com/JD26/FormOpt/blob/996ab888744059a54ba3b3f31b6bcc4f75e5faa6/code/test.py#L4656)
+The implementation can be found here: [Source code (test.py, line 4656)](https://github.com/JD26/FormOpt/blob/996ab888744059a54ba3b3f31b6bcc4f75e5faa6/code/test.py#L4656). 
 
 
 ![Optimal distribution](arxiv/L-Bracket.png)
+
+![Optimal distribution](arxiv/T-Frame.png)
 
 ## Example: Heat conduction
 
