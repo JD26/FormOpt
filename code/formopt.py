@@ -89,6 +89,7 @@ from ufl import (
     lt,
     MixedFunctionSpace,
     extract_blocks,
+    Constant as uflConst
 )
 
 from ufl.argument import Argument
@@ -192,6 +193,7 @@ class Model(ABC):
     ) -> (
         List[Tuple[Expr, Sequence[DirichletBC]]]
         | List[Tuple[Expr, Sequence[DirichletBC], Expr, Coefficient, GenericFunc]]
+        | List[Tuple[Expr, Sequence[DirichletBC], Expr, Coefficient, GenericFunc, tuple[ConstUFL, int]]]
     ):
         """
         Weak form of the partial differential equations.
@@ -203,15 +205,21 @@ class Model(ABC):
 
         Returns
         -------
-        List[Tuple[Expr, List[DirichletBC]]] | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc]]
-            List with elements of the form (`wk`, `bc`) or (`wk`, `bc`, `jac`, `unk`, `ini_func`),
-            corresponding to linear or nonlinear problems, respectively, where
+        List[Tuple[Expr, List[DirichletBC]]]
+        | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc]]
+        | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc, tuple[ConstUFL, int]]]
+            List with elements of the form (`wk`, `bc`), (`wk`, `bc`, `jac`, `unk`, `ini_func`) or
+            (`wk`, `bc`, `jac`, `unk`, `ini_func`, (`factor`, `Ns`))
+            corresponding to linear, nonlinear problems or nonlinear problems with factor,
+            respectively, where
 
             - `wk` is the weak formulation of a state equation,
             - `bc` is a list with the dirichlet boundary conditions,
             - `jac` is the jacobian of `wk`,
             - `unk` is the unknown in the nonlinear equation,
-            - `ini_func` is a callable function that defines the initial guess.
+            - `ini_func` is a callable function that defines the initial guess,
+            - `factor` is the factor multiplying the right-hand side of `wk`, and
+            - `Ns` is the number of Newton iterations.
         """
         pass
 
