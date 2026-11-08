@@ -207,10 +207,20 @@ class Model(ABC):
         -------
         List[Tuple[Expr, List[DirichletBC]]]
         | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc]]
-        | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc, tuple[ConstUFL, int]]]
-            List with elements of the form (`wk`, `bc`), (`wk`, `bc`, `jac`, `unk`, `ini_func`) or
-            (`wk`, `bc`, `jac`, `unk`, `ini_func`, (`factor`, `Ns`))
-            corresponding to linear, nonlinear problems or nonlinear problems with factor,
+        | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc, Tuple[ConstUFL, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, Coefficient, List[Function]]]]
+            List with elements of the form
+            (`wk`, `bc`),
+            (`wk`, `bc`, `jac`, `unk`, `ini_func`),
+            (`wk`, `bc`, `jac`, `unk`, `ini_func`, (`factor`, `Ns`)),
+            (`wk`, `bc`, (`prev`, `init`, `N`)), or
+            (`wk`, `bc`, (`prev`, `init`, `source`, `sfuncs`))
+            corresponding to linear problems,
+            nonlinear problems,
+            nonlinear problems with factor,
+            evolution problems with time-independent source, or
+            evolution problems with time-dependent source
             respectively, where
 
             - `wk` is the weak formulation of a state equation,
@@ -218,8 +228,13 @@ class Model(ABC):
             - `jac` is the jacobian of `wk`,
             - `unk` is the unknown in the nonlinear equation,
             - `ini_func` is a callable function that defines the initial guess,
-            - `factor` is the factor multiplying the right-hand side of `wk`, and
-            - `Ns` is the number of Newton iterations.
+            - `factor` is the factor multiplying the right-hand side of `wk`,
+            - `Ns` is the number of Newton iterations,
+            - `prev` is the previous iteration in the evolution problem,
+            - `init` is a callable function that defines the initial condition,
+            - `source` is the source function in the evolution problem,
+            - `sfuncs` is a list with the discretized source functions, and
+            - `N` is the number of time-steps.
         """
         pass
 
@@ -228,7 +243,6 @@ class Model(ABC):
         self, level_set_func: Function, states: List[Function]
     ) -> (
         List[Tuple[Expr, Sequence[DirichletBC]]]
-        | List[Tuple[Expr, Sequence[DirichletBC], Expr, Coefficient, GenericFunc]]
     ):
         """
         Weak form of the adjoint equations.
@@ -242,15 +256,12 @@ class Model(ABC):
 
         Returns
         -------
-        List[Tuple[Expr, List[DirichletBC]]] | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc]]
-            List with elements of the form (`wk`, `bc`) or (`wk`, `bc`, `jac`, `unk`, `ini_func`),
-            corresponding to linear or nonlinear problems, respectively, where
+        List[Tuple[Expr, List[DirichletBC]]]
+            List with elements of the form (`wk`, `bc`)
+            corresponding to linear problems, where
 
-            - `wk` is the weak formulation of a adjoint equation,
-            - `bc` is a list with the dirichlet boundary conditions,
-            - `jac` is the jacobian of `wk`,
-            - `unk` is the unknown in the nonlinear equation,
-            - `ini_func` is a callable function that defines the initial guess.
+            - `wk` is the weak formulation of a adjoint equation and
+            - `bc` is a list with the dirichlet boundary conditions.
         """
         pass
 
