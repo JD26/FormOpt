@@ -106,6 +106,8 @@ from plots import plot_domain
 
 from basix.ufl import element, mixed_element
 
+from types import SimpleNamespace
+
 comm = MPI.COMM_WORLD
 rank = comm.rank
 size = comm.size
@@ -193,7 +195,9 @@ class Model(ABC):
     ) -> (
         List[Tuple[Expr, Sequence[DirichletBC]]]
         | List[Tuple[Expr, Sequence[DirichletBC], Expr, Coefficient, GenericFunc]]
-        | List[Tuple[Expr, Sequence[DirichletBC], Expr, Coefficient, GenericFunc, tuple[ConstUFL, int]]]
+        | List[Tuple[Expr, Sequence[DirichletBC], Expr, Coefficient, GenericFunc, tuple[uflConst, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, Coefficient, List[Function]]]]
     ):
         """
         Weak form of the partial differential equations.
@@ -207,7 +211,7 @@ class Model(ABC):
         -------
         List[Tuple[Expr, List[DirichletBC]]]
         | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc]]
-        | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc, Tuple[ConstUFL, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Expr, Coefficient, GenericFunc, Tuple[uflConst, int]]]
         | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, int]]]
         | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, Coefficient, List[Function]]]]
             List with elements of the form
@@ -240,9 +244,11 @@ class Model(ABC):
 
     @abstractmethod
     def adjoint(
-        self, level_set_func: Function, states: List[Function]
+        self, level_set_func: Function, states: List[Function | List[Function]]
     ) -> (
         List[Tuple[Expr, Sequence[DirichletBC]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, Coefficient, List[Function]]]]
     ):
         """
         Weak form of the adjoint equations.
@@ -251,22 +257,37 @@ class Model(ABC):
         ----------
         level_set_func : Function
             Level set function.
-        states: List[Function]
-            List of state solutions.
+        states: List[Function | List[Function]]
+            List of state solutions. Each element is either a single Function
+            for stationary problems, or a list of Functions for evolution problems,
+            where states[i][k] corresponds to the k-th time step of the i-th state equation.
 
         Returns
         -------
         List[Tuple[Expr, List[DirichletBC]]]
-            List with elements of the form (`wk`, `bc`)
-            corresponding to linear problems, where
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, int]]]
+        | List[Tuple[Expr, List[DirichletBC], Tuple[Coefficient, GenericFunc, Coefficient, List[Function]]]]
+            List with elements of the form
+            (`wk`, `bc`),
+            (`wk`, `bc`, (`next`, `final`, `N`)), or
+            (`wk`, `bc`, (`next`, `final`, `source`, `sfuncs`))
+            corresponding to linear problems,
+            evolution adjoint problems with time-independent source, or
+            evolution adjoint problems with time-dependent source,
+            respectively, where
 
-            - `wk` is the weak formulation of a adjoint equation and
-            - `bc` is a list with the dirichlet boundary conditions.
+            - `wk` is the weak formulation of a adjoint equation,
+            - `bc` is a list with the dirichlet boundary conditions,
+            - `next` is the next iteration in the evolution adjoint problem,
+            - `final` is a callable that defines the final condition,
+            - `source` is the source function in the evolution adjoint problem,
+            - `sfuncs` is a list with the discretized source functions, and
+            - `N` is the number of time-steps.
         """
         pass
 
     @abstractmethod
-    def cost(self, level_set_func: Function, states: List[Function]) -> Expr:
+    def cost(self, level_set_func: Function, states: List[Function | List[Function]]) -> Expr:
         """
         Cost functional `J`.
 
@@ -274,8 +295,10 @@ class Model(ABC):
         ----------
         level_set_func : Function
             Level set function.
-        states: List[Function]
-            List of state solutions.
+        states: List[Function | List[Function]]
+            List of state solutions. Each element is either a single Function
+            for stationary problems, or a list of Functions for evolution problems,
+            where states[i][k] corresponds to the k-th time step of the i-th state equation.
 
         Returns
         -------
@@ -286,7 +309,7 @@ class Model(ABC):
 
     @abstractmethod
     def constraint(
-        self, level_set_func: Function, states: List[Function]
+        self, level_set_func: Function, states: List[Function | List[Function]]
     ) -> List[Expr]:
         """
         Constraint functions `C = [C0, C1, ...]`.
@@ -295,8 +318,10 @@ class Model(ABC):
         ----------
         level_set_func : Function
             Level set function.
-        states: List[Function]
-            List of state solutions.
+        states: List[Function | List[Function]]
+            List of state solutions. Each element is either a single Function
+            for stationary problems, or a list of Functions for evolution problems,
+            where states[i][k] corresponds to the k-th time step of the i-th state equation.
 
         Returns
         -------
@@ -307,7 +332,7 @@ class Model(ABC):
 
     @abstractmethod
     def derivative(
-        self, level_set_func: Function, states: List[Function], adjoints: List[Function]
+        self, level_set_func: Function, states: List[Function | List[Function]], adjoints: List[Function | List[Function]]
     ) -> Tuple[Tuple[Expr, List[Expr]], Tuple[Expr, List[Expr]]]:
         """
         Derivative components of the cost functional `J` and
@@ -317,10 +342,14 @@ class Model(ABC):
         ----------
         level_set_func : Function
             Level set function.
-        states : List[Function]
-            List of state solutions.
-        adjoints : List[Function]
-            List of adjoint solutions.
+        states : List[Function | List[Function]]
+            List of state solutions. Each element is either a single Function
+            for stationary problems, or a list of Functions for evolution problems,
+            where states[i][k] corresponds to the k-th time step of the i-th state equation.
+        adjoints : List[Function | List[Function]]
+            List of adjoint solutions. Each element is either a single Function
+            for stationary problems, or a list of Functions for evolution problems,
+            where adjoints[i][k] corresponds to the k-th time step of the i-th adjoint equation.
 
         Returns
         -------
@@ -3052,6 +3081,20 @@ def get_initial_level(
     return phi0
 
 
+def make_solve_ste(solvers, aux_fcs, u0):
+    def solve():
+        aux_fcs[0].interpolate(u0)
+        for solver in solvers:
+            solver.solve()
+    return solve
+
+def make_solve_adj(solvers, aux_adj, pN):
+    def solve():
+        aux_adj[-1].interpolate(pN)
+        for solver in solvers:
+            solver.solve()
+    return solve
+
 def runDP(
     model: Model,
     niter: int,
@@ -3132,28 +3175,71 @@ def runDP(
     # State equations/functions
     ste_eqs = model.pde(phi)
     nbr_ste = len(ste_eqs)
-    ste_fcs = [Function(model.space) for _ in range(nbr_ste)]
-    for i in range(nbr_ste):
-        ste_fcs[i].name = "u" + str(i)
+    #ste_fcs = [Function(model.space) for _ in range(nbr_ste)]
+    #for i in range(nbr_ste):
+    #    ste_fcs[i].name = "u" + str(i)
 
     # Solvers creation
     ste_pbs = []
+    ste_fcs = []
     for i in range(nbr_ste):
         ste_problem = ste_eqs[i]
         if len(ste_problem) == 2:
-            # linea problem
+            # linear problem
             weak_form, bcs = ste_problem
             bi, li = system(weak_form)
-            ste_pbs.append(create_solver(form(bi), form(li), bcs, ste_fcs[i]))
+            aux_ste = Function(model.space)
+            aux_ste.name = f"u{i}"
+            ste_fcs.append(aux_ste)
+            ste_pbs.append(create_solver(form(bi), form(li), bcs, aux_ste))
             # save_info_solver = SaveInfoSolver(ste_pbs[0].solver)
+        elif len(ste_problem) == 3:
+            # evolution problem
+            weak_form, bcs, time_data = ste_problem
+            if len(time_data) == 3:
+                # time-independent source
+                u_prev, u_init, N = time_data
+
+                aux_ste = [Function(model.space) for _ in range(N + 1)]
+                for k, fck in enumerate(aux_ste):
+                    fck.name = f"u{i}_{k}"
+                ste_fcs.append(aux_ste)
+
+                solvers_ste = []
+                for k in range(1, N + 1):
+                    true_wk = replace(weak_form, {u_prev: aux_ste[k - 1]})
+                    bi, li = system(true_wk)
+                    solvers_ste.append(create_solver(form(bi), form(li), bcs, aux_ste[k]))
+                
+            else:
+                # time-dependent source
+                u_prev, u_init, source, sfuncs = time_data
+                N = len(sfuncs)-1
+
+                aux_ste = [Function(model.space) for _ in range(N + 1)]
+                for k, fck in enumerate(aux_ste):
+                    fck.name = f"u{i}_{k}"
+                ste_fcs.append(aux_ste)
+
+                solvers_ste = []
+                for k in range(1, N + 1):
+                    true_wk = replace(weak_form, {u_prev: aux_ste[k - 1], source: sfuncs[k]})
+                    bi, li = system(true_wk)
+                    solvers_ste.append(create_solver(form(bi), form(li), bcs, aux_ste[k]))
+                
+            ste_pbs.append(SimpleNamespace(solve=make_solve_ste(solvers_ste, aux_ste, u_init)))
+
         elif len(ste_problem) == 5:
             # nonlinear: newton with initial guess
             weak_form, bcs, jacobian, seudo_state, ini_func = ste_problem
-            true_weak_form = replace(weak_form, {seudo_state: ste_fcs[i]})
-            true_jacobian = replace(jacobian, {seudo_state: ste_fcs[i]})
+            aux_ste = Function(model.space)
+            aux_ste.name = f"u{i}"
+            ste_fcs.append(aux_ste)
+            true_weak_form = replace(weak_form, {seudo_state: aux_ste})
+            true_jacobian = replace(jacobian, {seudo_state: aux_ste})
             ste_pbs.append(
                 create_nonlinear_solver(
-                    comm, true_weak_form, bcs, true_jacobian, ste_fcs[i], ini_func
+                    comm, true_weak_form, bcs, true_jacobian, aux_ste, ini_func
                 )
             )
         else:
@@ -3161,11 +3247,14 @@ def runDP(
             weak_form, bcs, jacobian, seudo_state, ini_func, factor_pars = ste_problem
             factor, nbr_newton_steps = factor_pars
             true_factor = const(domain, 0.0)
+            aux_ste = Function(model.space)
+            aux_ste.name = f"u{i}"
+            ste_fcs.append(aux_ste)
             true_weak_form = replace(
-                weak_form, {seudo_state: ste_fcs[i], factor: true_factor}
+                weak_form, {seudo_state: aux_ste, factor: true_factor}
             )
             true_jacobian = replace(
-                jacobian, {seudo_state: ste_fcs[i], factor: true_factor}
+                jacobian, {seudo_state: aux_ste, factor: true_factor}
             )
             ste_pbs.append(
                 create_nonlinear_solver_with_factor(
@@ -3173,7 +3262,7 @@ def runDP(
                     true_weak_form,
                     bcs,
                     true_jacobian,
-                    ste_fcs[i],
+                    aux_ste,
                     ini_func,
                     true_factor,
                     nbr_newton_steps,
@@ -3183,18 +3272,61 @@ def runDP(
     # Adjoint equations/functions
     adj_eqs = model.adjoint(phi, ste_fcs)
     nbr_adj = len(adj_eqs)
+
     if nbr_adj > 0:
-        adj_fcs = [Function(model.space) for _ in range(nbr_adj)]
-        for i in range(nbr_adj):
-            adj_fcs[i].name = "p" + str(i)
+        # adj_fcs = [Function(model.space) for _ in range(nbr_adj)]
+        # for i in range(nbr_adj):
+        #     adj_fcs[i].name = "p" + str(i)
 
         # Solvers creation
         adj_pbs = []
+        adj_fcs = []
         for i in range(nbr_adj):
             adj_problem = adj_eqs[i]
-            weak_form, bcs = adj_problem
-            bi, li = system(weak_form)
-            adj_pbs.append(create_solver(form(bi), form(li), bcs, adj_fcs[i]))
+
+            if len(adj_problem) == 2:
+                weak_form, bcs = adj_problem
+                bi, li = system(weak_form)
+                aux_adj = Function(model.space)
+                aux_adj.name = f"p{i}"
+                adj_fcs.append(aux_adj)
+                adj_pbs.append(create_solver(form(bi), form(li), bcs, aux_adj))
+            
+            elif len(adj_problem) == 3:
+                weak_form, bcs, time_data = adj_problem
+
+                if len(time_data) == 3:
+                    # time-independent source
+                    p_next, p_final, N = time_data
+                    
+                    aux_adj = [Function(model.space) for _ in range(N + 1)]
+                    for k, fck in enumerate(aux_adj):
+                        fck.name = f"p{i}_{k}"
+                    adj_fcs.append(aux_adj)
+
+                    solvers_adj = []
+                    for k in range(N - 1, -1, -1):
+                        true_wk = replace(weak_form, {p_next: aux_adj[k + 1]})
+                        bi, li = system(true_wk)
+                        solvers_adj.append(create_solver(form(bi), form(li), bcs, aux_adj[k]))
+
+                else:
+                    # time-dependent source
+                    p_next, p_final, source, sfuncs = time_data
+                    N = len(sfuncs) - 1
+
+                    aux_adj = [Function(model.space) for _ in range(N + 1)]
+                    for k, fck in enumerate(aux_adj):
+                        fck.name = f"p{i}_{k}"
+                    adj_fcs.append(aux_adj)
+
+                    solvers_adj = []
+                    for k in range(N - 1, -1, -1):
+                        true_wk = replace(weak_form, {p_next: aux_adj[k + 1], source: sfuncs[k]})
+                        bi, li = system(true_wk)
+                        solvers_adj.append(create_solver(form(bi), form(li), bcs, aux_adj[k]))
+                
+                adj_pbs.append(SimpleNamespace(solve=make_solve_adj(solvers_adj, aux_adj, p_final)))
     else:
         adj_fcs = []
 
@@ -3320,9 +3452,15 @@ def runDP(
 
         if degree_space == 1:
             for f in ste_fcs:
-                xdmf.write_function(f, 0)
+                if isinstance(f, list):
+                    xdmf.write_function(f[-1], 0)
+                else:
+                    xdmf.write_function(f, 0)
             for f in adj_fcs:
-                xdmf.write_function(f, 0)
+                if isinstance(f, list):
+                    xdmf.write_function(f[-1], 0)
+                else:
+                    xdmf.write_function(f, 0)
         else:
             ste_fcsP1 = interpolate(ste_fcs, spaceP1, name="u")
             adj_fcsP1 = interpolate(adj_fcs, spaceP1, name="p")
@@ -3394,9 +3532,15 @@ def runDP(
             xdmf.write_function(phi, iter)
             if degree_space == 1:
                 for f in ste_fcs:
-                    xdmf.write_function(f, iter)
+                    if isinstance(f, list):
+                        xdmf.write_function(f[-1], iter)
+                    else:
+                        xdmf.write_function(f, iter)
                 for f in adj_fcs:
-                    xdmf.write_function(f, iter)
+                    if isinstance(f, list):
+                        xdmf.write_function(f[-1], iter)
+                    else:
+                        xdmf.write_function(f, iter)
             else:
                 ste_fcsP1 = interpolate(ste_fcs, spaceP1, name="u")
                 adj_fcsP1 = interpolate(adj_fcs, spaceP1, name="p")
