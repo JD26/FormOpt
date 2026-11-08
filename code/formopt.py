@@ -119,7 +119,7 @@ inf_name = "info_solver"
 
 ScalarFunc = Callable[[npt.NDArray[np.float64]], float]
 VectorFunc = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
-GenericFunc = ScalarFunc | ScalarFunc
+GenericFunc = ScalarFunc | VectorFunc
 
 
 class Factor:
