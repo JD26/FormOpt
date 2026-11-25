@@ -52,6 +52,7 @@ from dolfinx.fem.petsc import (
     NonlinearProblem,
     assemble_matrix,
     assemble_vector,
+    create_matrix,
     create_vector,
     apply_lifting,
     set_bc,
@@ -89,7 +90,10 @@ from ufl import (
     lt,
     MixedFunctionSpace,
     extract_blocks,
-    Constant as uflConst
+    Constant as uflConst,
+    jump,
+    avg,
+    FacetNormal
 )
 
 from ufl.argument import Argument
@@ -2099,6 +2103,7 @@ class Level:
         tht: Function,
         diam2: float,
         smooth: bool,
+        bcs: List[DirichletBC] = []
     ) -> None:
         """
         Set up the iterative method to solve the level set equation.
@@ -2118,8 +2123,12 @@ class Level:
             Square of the mesh diameter.
         smooth : bool
             Flag to add diffusion.
+        bcs : List[DirichletBC], optional
+            Dirichlet boundary conditions.
         """
-
+        
+        self.phi = phi
+        self.bcs = bcs
         self.domain = domain
         self.dt = const(domain, 0.0)
         dx = Measure("dx", domain=domain)
@@ -2127,11 +2136,57 @@ class Level:
         u = TrialFunction(space)
         v = TestFunction(space)
 
-        # # ----
-        # sign_phi = conditional(
-        #     lt(phi, -0.25), -0.25, conditional(gt(phi, 0.25), 0.25, phi)
+		# --------------------------------------------------
+		# Continuous Interior Penalty (CIP) + Crank–Nicolson
+        # Clever and costly method
+        # n = FacetNormal(domain)
+        # dS = Measure("dS", domain=domain)
+
+        # # CIP parameter (dimensionless, try 0.01 - 0.1)
+        # gamma_cip = 0.05
+
+        # # Spatial operator: Galerkin transport + interior penalty
+        # def transport(w, z):
+        #     return dot(tht, grad(w)) * z * dx
+
+        # def penalty(w, z):
+        #     return (
+        #         gamma_cip
+        #         * diam2
+        #         * abs(dot(avg(tht), n("+")))
+        #         * jump(grad(w), n)
+        #         * jump(grad(z), n)
+        #         * dS
+        #     )
+
+        # # Crank-Nicolson weak formulation (standard test function v)
+        # a = u * v * dx + (self.dt / 2.0) * (transport(u, v) + penalty(u, v))
+        # L = self.phi * v * dx - (self.dt / 2.0) * (
+        #     transport(self.phi, v) + penalty(self.phi, v)
         # )
-        # # ----
+        
+        # Add diffusion
+        # if smooth:
+        #     a += (self.dt / 2.0) * diam2 * dot(grad(u), grad(v)) * dx
+        #     L -= (self.dt / 2.0) * diam2 * dot(grad(phi), grad(v)) * dx
+
+        
+        # ------------------------------------------------------------
+        # Taylor-Galerkin (one-step, second order): explicit transport
+        # Simple and fast method
+        # a = u * v * dx
+        # L = (
+        #     self.phi * v * dx
+        #     - self.dt * dot(tht, grad(self.phi)) * v * dx
+        #     - (self.dt**2 / 2.0)
+        #     * dot(tht, grad(self.phi))
+        #     * dot(tht, grad(v))
+        #     * dx
+        # )
+
+        # # Add diffusion (implicit, keeps a independent of phi)
+        # if smooth:
+        #     a += self.dt * diam2 * dot(grad(u), grad(v)) * dx		
 
         # Petrov-Galerkin test function
         tau = 2.0 * sqrt(1.0 / self.dt**2 + dot(tht, tht) / diam2)
@@ -2145,12 +2200,14 @@ class Level:
         if smooth:
             a += (self.dt / 2.0) * diam2 * dot(grad(u), grad(v)) * dx
             L -= (self.dt / 2.0) * diam2 * dot(grad(phi), grad(v)) * dx
-
+        
         # Pre-compilation
         self.a = form(a)
         self.L = form(L)
+        
+        self._setup_solver(domain.comm)
 
-    def run(self, phi: Function, steps: int, tend: float) -> None:
+    def run(self, steps: int, tend: float) -> None:
         """
         Run the iterative method over a fixed number of time steps.
         Since the bilinear part remains unchanged across iterations,
@@ -2167,19 +2224,51 @@ class Level:
             Final time.
         """
         self.dt.value = tend / steps
-
-        solver = build_solver(self.domain, self.a, [])
-        b = create_vector(self.L)
-
+        
+        # Re-assemble the matrix values in the existing object
+        self.A.zeroEntries()
+        assemble_matrix(self.A, self.a, bcs=self.bcs)
+        self.A.assemble()
+        self.solver.setOperators(self.A)
+            
         for _ in range(steps):
-            with b.localForm() as loc_b:
+            with self.b.localForm() as loc_b:
                 loc_b.set(0)
-            assemble_vector(b, self.L)
-            b.ghostUpdate(
+            assemble_vector(self.b, self.L)
+            # Dirichlet: modify the right-hand side (lifting)
+            apply_lifting(self.b, [self.a], bcs=[self.bcs])
+            self.b.ghostUpdate(
                 addv=PETSc.InsertMode.ADD_VALUES, mode=PETSc.ScatterMode.REVERSE
             )
-            solver.solve(b, phi.x.petsc_vec)
-            phi.x.scatter_forward()
+            # Dirichlet: impose the boundary values
+            set_bc(self.b, self.bcs)
+            # GMRES iterations happen here: they start from the current
+            # content of phi (phi^n, thanks to setInitialGuessNonzero)
+            # and overwrite it with the solution phi^{n+1}
+            self.solver.solve(self.b, self.phi.x.petsc_vec)
+            self.phi.x.scatter_forward()		
+            
+    def _setup_solver(self, comm: MPI.Comm) -> None:
+        """
+        Create the PETSc objects (matrix, vector and Krylov solver)
+        once, so that run() only re-assembles their values.
+        None of them depends on the boundary conditions.
+
+        Parameters
+        ----------
+        comm : MPI.Comm
+            MPI communicator of the domain.
+        """
+        
+        self.A = create_matrix(self.a)
+        self.b = create_vector(self.L)
+
+        self.solver = PETSc.KSP().create(comm)
+        self.solver.setType(PETSc.KSP.Type.GMRES)
+        self.solver.getPC().setType(PETSc.PC.Type.HYPRE)
+        self.solver.setTolerances(rtol=1e-6, atol=1e-10, max_it=1000)
+        # Use the current phi (previous time step) as initial guess
+        self.solver.setInitialGuessNonzero(True)
 
 
 class Reinit:
@@ -3477,7 +3566,7 @@ def runDP(
 
         for iter in range(1, niter + 1):
 
-            cls_lset.run(phi, lset_steps, lset_end)
+            cls_lset.run(lset_steps, lset_end)
             # Reinitialization
             if reinit_step and iter > start_to_check:
                 if iter % reinit_step == 0:
@@ -3821,7 +3910,7 @@ def runTP(
     for iter in range(1, niter + 1):
         # -------------------------------------------------
         if rank == 0:
-            cls_lset.run(phi, lset_steps, lset_end)
+            cls_lset.run(lset_steps, lset_end)
             # Reinitialization
             if reinit_step and iter > start_to_check:
                 if iter % reinit_step == 0:
@@ -4138,7 +4227,7 @@ def runMP(
     for iter in range(1, niter + 1):
         # -------------------------------------------------
         if color == 0:
-            cls_lset.run(phi, lset_steps, lset_end)
+            cls_lset.run(lset_steps, lset_end)
             # Reinitialization
             if reinit_step and iter > start_to_check:
                 if iter % reinit_step == 0:
